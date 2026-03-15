@@ -301,17 +301,21 @@ class ParticleSystem {
 
   spawnFireworks(cx, cy, bursts = 5) {
     const th = getCurrentTheme();
+    this.spawnFireworksColored(cx, cy, th.colors, th.kind, bursts);
+  }
+
+  spawnFireworksColored(cx, cy, colors, kind = 'spark', bursts = 5) {
     for (let b = 0; b < bursts; b++) {
       const bx = cx + this._rnd(-200, 200);
       const by = cy + this._rnd(-150, 150);
-      const baseCol = this._rand(th.colors);
+      const baseCol = colors[Math.floor(Math.random() * colors.length)];
       const n = 36 + Math.floor(Math.random()*16);
       for (let i = 0; i < n; i++) {
         const angle = (i/n) * Math.PI*2 + this._rnd(-0.1,0.1);
         const speed = this._rnd(100, 260);
         this._p.push(new Particle(bx, by,
           Math.cos(angle)*speed, Math.sin(angle)*speed,
-          this._rnd(0.7, 1.6), baseCol, this._rnd(2,7), th.kind, 180));
+          this._rnd(0.7, 1.6), baseCol, this._rnd(2,7), kind, 180));
       }
       for (let r = 8; r < 60; r += 10) {
         this._p.push(new Particle(bx, by, 0, 0, 0.45, baseCol, r, 'ring', 0));
@@ -354,28 +358,35 @@ class ParticleSystem {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 별빛 배경
+// 별빛 배경 (테마 반응형)
 // ═══════════════════════════════════════════════════════════════════════════
 class StarField {
   constructor(w, h) {
     this.w = w; this.h = h;
     this._time = 0;
-    this._layers = this._build(w, h);
+    this._themeId = null;
+    this._layers = [];
+    this._rebuildForTheme();
   }
 
-  _build(w, h) {
+  _rebuildForTheme() {
+    const tid = (typeof Storage !== 'undefined') ? (Storage.getSettings().visualTheme || 'galaxy') : 'galaxy';
+    if (tid === this._themeId) return;
+    this._themeId = tid;
+    const t = (typeof VISUAL_THEMES !== 'undefined') ? (VISUAL_THEMES[tid] || VISUAL_THEMES.galaxy) : null;
+    const COLS = t ? t.starColors : ['#ffffff','#c8dcff','#fff0c8'];
     const rnd = (a,b) => Math.random()*(b-a)+a;
-    const COLS = ['#ffffff','#c8dcff','#fff0c8','#b4ffe8','#ffc8c8'];
-    return [
-      { stars: Array.from({length:120},()=>({x:rnd(0,w),y:rnd(0,h),r:1,  twinkle:rnd(0,Math.PI*2),col:COLS[Math.floor(Math.random()*COLS.length)]})), speed:0,  alpha:0.55 },
-      { stars: Array.from({length:60}, ()=>({x:rnd(0,w),y:rnd(0,h),r:1.5,twinkle:rnd(0,Math.PI*2),col:COLS[Math.floor(Math.random()*COLS.length)]})), speed:0,  alpha:0.78 },
-      { stars: Array.from({length:25}, ()=>({x:rnd(0,w),y:rnd(0,h),r:2,  twinkle:rnd(0,Math.PI*2),col:COLS[Math.floor(Math.random()*COLS.length)]})), speed:45, alpha:1.0  },
+    this._layers = [
+      { stars: Array.from({length:120},()=>({x:rnd(0,this.w),y:rnd(0,this.h),r:1,  twinkle:rnd(0,Math.PI*2),col:COLS[Math.floor(Math.random()*COLS.length)]})), speed:0,  alpha:0.55 },
+      { stars: Array.from({length:60}, ()=>({x:rnd(0,this.w),y:rnd(0,this.h),r:1.5,twinkle:rnd(0,Math.PI*2),col:COLS[Math.floor(Math.random()*COLS.length)]})), speed:0,  alpha:0.78 },
+      { stars: Array.from({length:25}, ()=>({x:rnd(0,this.w),y:rnd(0,this.h),r:2,  twinkle:rnd(0,Math.PI*2),col:COLS[Math.floor(Math.random()*COLS.length)]})), speed:45, alpha:1.0  },
     ];
   }
 
-  resize(w, h) { this.w = w; this.h = h; this._layers = this._build(w, h); }
+  resize(w, h) { this.w = w; this.h = h; this._themeId = null; this._rebuildForTheme(); }
 
   update(dt) {
+    this._rebuildForTheme(); // 테마 변경 감지
     this._time += dt;
     for (const layer of this._layers) {
       if (!layer.speed) continue;
@@ -400,29 +411,38 @@ class StarField {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 성운 배경
+// 배경 (테마 반응형 — 성운/숲/불꽃/사막 등)
 // ═══════════════════════════════════════════════════════════════════════════
 class NebulaBackground {
   constructor(w, h) {
     this._canvas = document.createElement('canvas');
     this._canvas.width = w; this._canvas.height = h;
+    this._themeId = null;
     this._build(w, h);
   }
 
   _build(w, h) {
+    const tid = (typeof Storage !== 'undefined') ? (Storage.getSettings().visualTheme || 'galaxy') : 'galaxy';
+    this._themeId = tid;
+    const t = (typeof VISUAL_THEMES !== 'undefined') ? (VISUAL_THEMES[tid] || VISUAL_THEMES.galaxy) : null;
+    const bgColor = t ? t.bg : '#05051a';
+    const nebColors = t ? t.nebulaColors : ['#281450','#0a1e50','#3c0a28','#0a3c3c'];
+
     const ctx = this._canvas.getContext('2d');
+    // 기본 배경 그라디언트
     const grad = ctx.createLinearGradient(0, 0, w, h);
-    grad.addColorStop(0,   '#05051a');
-    grad.addColorStop(0.4, '#060820');
-    grad.addColorStop(0.7, '#080520');
-    grad.addColorStop(1,   '#05051a');
+    grad.addColorStop(0,   bgColor);
+    grad.addColorStop(0.4, bgColor);
+    grad.addColorStop(0.7, bgColor);
+    grad.addColorStop(1,   bgColor);
     ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
 
+    // 성운/배경 구름 효과
     const NEBULA = [
-      [w*0.2, h*0.3, '#281450', 160],
-      [w*0.7, h*0.2, '#0a1e50', 180],
-      [w*0.5, h*0.7, '#3c0a28', 140],
-      [w*0.8, h*0.8, '#0a3c3c', 130],
+      [w*0.2, h*0.3, nebColors[0], 160],
+      [w*0.7, h*0.2, nebColors[1], 180],
+      [w*0.5, h*0.7, nebColors[2], 140],
+      [w*0.8, h*0.8, nebColors[3] || nebColors[0], 130],
     ];
     for (const [cx, cy, col, size] of NEBULA) {
       for (let i = 0; i < 18; i++) {
@@ -437,6 +457,18 @@ class NebulaBackground {
     }
   }
 
-  resize(w, h) { this._canvas.width = w; this._canvas.height = h; this._build(w, h); }
+  resize(w, h) {
+    this._canvas.width = w; this._canvas.height = h;
+    this._themeId = null; this._build(w, h);
+  }
+
+  // 테마 변경 감지 후 재빌드
+  checkTheme() {
+    const tid = (typeof Storage !== 'undefined') ? (Storage.getSettings().visualTheme || 'galaxy') : 'galaxy';
+    if (tid !== this._themeId) {
+      this._build(this._canvas.width, this._canvas.height);
+    }
+  }
+
   draw(ctx) { ctx.drawImage(this._canvas, 0, 0); }
 }

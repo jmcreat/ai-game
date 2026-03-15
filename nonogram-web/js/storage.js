@@ -17,6 +17,7 @@ const Storage = (() => {
       particles: true,
       colorScheme: 'galaxy',
       effectTheme: 'galaxy',    // galaxy | fire | ice | neon | sakura | rainbow
+      visualTheme: 'galaxy',    // galaxy | sakura | desert | forest | arctic | ocean | lava
     },
     lastPlayed: null,
   });

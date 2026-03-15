@@ -36,6 +36,8 @@ function resize() {
 class SceneManager {
   constructor(sw, sh) {
     this._sw = sw; this._sh = sh;
+    // 저장된 비주얼 테마 먼저 적용
+    applyVisualTheme(Storage.getSettings().visualTheme || 'galaxy');
     this._nebula   = new NebulaBackground(sw, sh);
     this._stars    = new StarField(sw, sh);
     this._scene    = null;
@@ -83,6 +85,9 @@ class SceneManager {
       }
       case 'effect_settings':
         this._scene = new EffectSettingsScene(sw, sh, this._nebula, this._stars);
+        break;
+      case 'visual_theme':
+        this._scene = new VisualThemeScene(sw, sh, this._nebula, this._stars);
         break;
     }
   }

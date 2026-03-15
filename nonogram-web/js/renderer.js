@@ -1,5 +1,115 @@
 // renderer.js - Canvas 2D 렌더링 (그리드, 힌트, 네온 UI)
 
+// ── 비주얼 테마 정의 ─────────────────────────────────────────────────────────
+const VISUAL_THEMES = {
+  galaxy: {
+    id: 'galaxy', name: '🌌 갤럭시', desc: '별빛 우주 공간',
+    bg: '#05051a',
+    cellEmpty: '#0e1530', cellHover: '#141e46',
+    cellFilled: '#3ca0ff', cellFilled2: '#64c8ff',
+    gridLine: 'rgba(50,70,130,0.95)', grid5Line: 'rgba(90,120,200,1.0)',
+    hintBg: 'rgba(5,8,25,0.97)', rowDone: 'rgba(20,80,35,0.75)',
+    xStroke: 'rgba(255,255,255,0.9)',
+    neonAccent: '#50b4ff', progressFg: '#3cb4ff',
+    nebulaColors: ['#281450','#0a1e50','#3c0a28','#0a3c3c'],
+    starColors: ['#ffffff','#c8dcff','#fff0c8','#b4ffe8','#ffc8c8'],
+    particleKind: 'star', particleGravity: 60,
+    particleColors: ['#ffdc50','#a0c8ff','#c8e8ff','#ffffa0','#78e8ff','#b450ff'],
+  },
+  sakura: {
+    id: 'sakura', name: '🌸 벚꽃', desc: '봄 벚꽃 흩날리는 숲',
+    bg: '#1a0815',
+    cellEmpty: '#2a1020', cellHover: '#3d1830',
+    cellFilled: '#ff7eb3', cellFilled2: '#ffb3d1',
+    gridLine: 'rgba(180,80,120,0.7)', grid5Line: 'rgba(220,100,150,0.95)',
+    hintBg: 'rgba(20,5,15,0.97)', rowDone: 'rgba(80,20,50,0.75)',
+    xStroke: 'rgba(255,255,255,0.9)',
+    neonAccent: '#ff7eb3', progressFg: '#ff7eb3',
+    nebulaColors: ['#3c0820','#280818','#4a1030','#200510'],
+    starColors: ['#ffb7d5','#ffd0e8','#fff0f5','#ff99cc','#ffe0ee'],
+    particleKind: 'petal', particleGravity: 120,
+    particleColors: ['#ffb7d5','#ff8fb0','#ffd0e8','#ff6699','#ffe0f0','#ffaacc'],
+  },
+  desert: {
+    id: 'desert', name: '🏜️ 사막', desc: '황금빛 모래 폭풍',
+    bg: '#1a1005',
+    cellEmpty: '#2a1e08', cellHover: '#3d2e10',
+    cellFilled: '#f0a030', cellFilled2: '#ffc850',
+    gridLine: 'rgba(150,100,30,0.8)', grid5Line: 'rgba(200,140,40,0.95)',
+    hintBg: 'rgba(18,12,3,0.97)', rowDone: 'rgba(80,55,10,0.75)',
+    xStroke: 'rgba(255,240,200,0.9)',
+    neonAccent: '#f0a030', progressFg: '#f0a030',
+    nebulaColors: ['#3c2808','#281800','#4a3010','#200e00'],
+    starColors: ['#ffd080','#ffe4a0','#fff0c0','#ffcc60','#ffe8b0'],
+    particleKind: 'spark', particleGravity: 90,
+    particleColors: ['#ff8800','#ffaa20','#ffcc40','#ff6600','#ffee80','#ff9900'],
+  },
+  forest: {
+    id: 'forest', name: '🌲 숲', desc: '신비로운 마법의 숲',
+    bg: '#020f02',
+    cellEmpty: '#081508', cellHover: '#102010',
+    cellFilled: '#40c060', cellFilled2: '#70e880',
+    gridLine: 'rgba(30,80,30,0.9)', grid5Line: 'rgba(50,120,50,0.95)',
+    hintBg: 'rgba(2,8,2,0.97)', rowDone: 'rgba(10,60,15,0.75)',
+    xStroke: 'rgba(200,255,200,0.9)',
+    neonAccent: '#40c060', progressFg: '#40c060',
+    nebulaColors: ['#082808','#041804','#0c3c0c','#041004'],
+    starColors: ['#a0ffb0','#c0ffc0','#e0ffe0','#80ff90','#d0ffd8'],
+    particleKind: 'petal', particleGravity: 80,
+    particleColors: ['#40ff60','#80ff90','#c0ffb0','#20e040','#a0ffc0','#60ff80'],
+  },
+  arctic: {
+    id: 'arctic', name: '❄️ 북극', desc: '얼음 결정 설원',
+    bg: '#020818',
+    cellEmpty: '#081828', cellHover: '#102840',
+    cellFilled: '#80d8ff', cellFilled2: '#c0f0ff',
+    gridLine: 'rgba(80,140,200,0.8)', grid5Line: 'rgba(120,180,240,0.95)',
+    hintBg: 'rgba(2,5,18,0.97)', rowDone: 'rgba(20,60,90,0.75)',
+    xStroke: 'rgba(220,240,255,0.95)',
+    neonAccent: '#80d8ff', progressFg: '#80d8ff',
+    nebulaColors: ['#081838','#041028','#0c2848','#041828'],
+    starColors: ['#ffffff','#d0f0ff','#e8f8ff','#a0e8ff','#f0faff'],
+    particleKind: 'crystal', particleGravity: 30,
+    particleColors: ['#a0e8ff','#d0f8ff','#ffffff','#80d0ff','#c0f0ff','#60c8ff'],
+  },
+  ocean: {
+    id: 'ocean', name: '🌊 딥오션', desc: '심해 발광 생물',
+    bg: '#000a18',
+    cellEmpty: '#001525', cellHover: '#002038',
+    cellFilled: '#0088cc', cellFilled2: '#00bbff',
+    gridLine: 'rgba(0,80,120,0.9)', grid5Line: 'rgba(0,120,180,0.95)',
+    hintBg: 'rgba(0,5,15,0.97)', rowDone: 'rgba(0,50,80,0.75)',
+    xStroke: 'rgba(150,240,255,0.9)',
+    neonAccent: '#00bbff', progressFg: '#0088cc',
+    nebulaColors: ['#001830','#000c20','#002840','#001020'],
+    starColors: ['#00ffff','#40e0ff','#80f0ff','#00ddcc','#60ffee'],
+    particleKind: 'ring', particleGravity: -20,
+    particleColors: ['#00ffff','#0088ff','#00ddaa','#4080ff','#80ffee','#00bbcc'],
+  },
+  lava: {
+    id: 'lava', name: '🌋 용암', desc: '마그마 불꽃 폭발',
+    bg: '#180200',
+    cellEmpty: '#280500', cellHover: '#3c0800',
+    cellFilled: '#ff4400', cellFilled2: '#ff8020',
+    gridLine: 'rgba(120,20,0,0.9)', grid5Line: 'rgba(180,40,0,0.95)',
+    hintBg: 'rgba(15,2,0,0.97)', rowDone: 'rgba(80,15,0,0.75)',
+    xStroke: 'rgba(255,200,100,0.9)',
+    neonAccent: '#ff4400', progressFg: '#ff4400',
+    nebulaColors: ['#3c0800','#280400','#4a0c00','#200300'],
+    starColors: ['#ff8040','#ffaa60','#ff6020','#ffcc80','#ff9050'],
+    particleKind: 'spark', particleGravity: -180,
+    particleColors: ['#ff6000','#ff9020','#ffcc40','#ff3010','#ffee80','#ff8000'],
+  },
+};
+const VISUAL_ORDER = ['galaxy','sakura','desert','forest','arctic','ocean','lava'];
+
+// 현재 비주얼 테마 반환
+function getCurrentVisualTheme() {
+  const id = (typeof Storage !== 'undefined') ? (Storage.getSettings().visualTheme || 'galaxy') : 'galaxy';
+  return VISUAL_THEMES[id] || VISUAL_THEMES.galaxy;
+}
+
+// ── 색상 상수 C (테마에 따라 동적으로 업데이트) ──────────────────────────────
 const C = {
   bg:           '#05051a',
   panel:        'rgba(10,15,40,0.85)',
@@ -25,7 +135,28 @@ const C = {
   errorRed:     '#ff3c50',
   progressBg:   'rgba(15,20,50,0.8)',
   progressFg:   '#3cb4ff',
+  xStroke:      'rgba(255,255,255,0.9)',
 };
+
+// 테마 색상을 C에 적용
+function applyVisualTheme(themeId) {
+  const t = VISUAL_THEMES[themeId] || VISUAL_THEMES.galaxy;
+  C.bg          = t.bg;
+  C.cellEmpty   = t.cellEmpty;
+  C.cellHover   = t.cellHover;
+  C.cellFilled  = t.cellFilled;
+  C.cellFilled2 = t.cellFilled2;
+  C.gridLine    = t.gridLine;
+  C.grid5Line   = t.grid5Line;
+  C.hintBg      = t.hintBg;
+  C.rowDone     = t.rowDone;
+  C.neonBlue    = t.neonAccent;
+  C.progressFg  = t.progressFg;
+  C.xStroke     = t.xStroke || 'rgba(255,255,255,0.9)';
+  C.timer       = t.neonAccent;
+  C.panel       = t.hintBg;
+  C.panelBorder = t.gridLine;
+}
 
 // ── 폰트 헬퍼 ─────────────────────────────────────────────────────────────
 function font(size, bold = false) {
@@ -287,7 +418,7 @@ class GridRenderer {
           ctx.fillStyle = 'rgba(255,255,255,0.18)';
           ctx.fillRect(x+2, y+2, cs-6, Math.max(2, cs*0.15));
           const m = cs * 0.22;
-          ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+          ctx.strokeStyle = C.xStroke;
           ctx.lineWidth = Math.max(2, cs * 0.15);
           ctx.lineCap = 'round';
           ctx.beginPath();

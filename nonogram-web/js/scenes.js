@@ -36,7 +36,8 @@ class MainMenuScene extends Scene {
       new NeonButton(sw/2-140, sh/2-30,  280, 50, '스테이지 플레이', C.neonBlue,   20),
       new NeonButton(sw/2-140, sh/2+36,  280, 50, '무한 모드 ∞',    C.neonPurple, 20),
       new NeonButton(sw/2-140, sh/2+102, 280, 50, '오늘의 퍼즐 📅',  C.neonCyan,   20),
-      new NeonButton(sw/2-140, sh/2+166, 280, 50, '✨ 이펙트 설정',  C.gold,       20),
+      new NeonButton(sw/2-140, sh/2+166, 280, 50, '🎨 테마 선택',    C.gold,       20),
+      new NeonButton(sw/2-140, sh/2+232, 280, 50, '✨ 이펙트 설정',  'rgba(180,140,255,0.9)', 20),
     ];
     this._stats = Storage.getStats();
   }
@@ -47,7 +48,8 @@ class MainMenuScene extends Scene {
       if (this._buttons[0].contains(x, y)) this._next = { scene:'stage' };
       if (this._buttons[1].contains(x, y)) this._next = { scene:'infinite_setup' };
       if (this._buttons[2].contains(x, y)) this._next = { scene:'daily' };
-      if (this._buttons[3].contains(x, y)) this._next = { scene:'effect_settings' };
+      if (this._buttons[3].contains(x, y)) this._next = { scene:'visual_theme' };
+      if (this._buttons[4].contains(x, y)) this._next = { scene:'effect_settings' };
     }
   }
 
@@ -732,7 +734,7 @@ class ToggleButton {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 이펙트 설정 씬
+// 이펙트 설정 씬 (파티클 효과 선택)
 // ═══════════════════════════════════════════════════════════════════════════
 class EffectSettingsScene extends Scene {
   constructor(sw, sh, nebula, starfield) {
@@ -743,13 +745,11 @@ class EffectSettingsScene extends Scene {
     this._time     = 0;
     this._selected = Storage.getSettings().effectTheme || 'galaxy';
     this._hoverId  = null;
-    this._previewTimer = {};    // themeId → cooldown
+    this._previewTimer = {};
     this._back = new NeonButton(16, 16, 90, 38, '◀ 뒤로', C.neonBlue, 15);
-
-    // 카드 배치 계산
     this._COLS  = sw < 500 ? 2 : 3;
     this._CARD_W = Math.floor((sw - 48) / this._COLS);
-    this._CARD_H = 140;
+    this._CARD_H = 130;
     this._TOP    = 74;
   }
 
@@ -757,14 +757,11 @@ class EffectSettingsScene extends Scene {
     const col = i % this._COLS;
     const row = Math.floor(i / this._COLS);
     const x = 16 + col * this._CARD_W;
-    const y = this._TOP + row * (this._CARD_H + 14);
+    const y = this._TOP + row * (this._CARD_H + 12);
     return { x, y, w: this._CARD_W - 14, h: this._CARD_H };
   }
 
-  _cardCenter(i) {
-    const r = this._cardRect(i);
-    return [r.x + r.w/2, r.y + r.h/2];
-  }
+  _cardCenter(i) { const r = this._cardRect(i); return [r.x + r.w/2, r.y + r.h/2]; }
 
   handleEvent(e) {
     if (e.type === 'click' || e.type === 'touchend') {
@@ -775,7 +772,6 @@ class EffectSettingsScene extends Scene {
         if (x >= r.x && x <= r.x+r.w && y >= r.y && y <= r.y+r.h) {
           this._selected = id;
           Storage.updateSetting('effectTheme', id);
-          // 선택 시 미리보기 파티클
           const [cx, cy] = this._cardCenter(i);
           this._ps.spawnPreview(cx, cy, id);
           this._ps.spawnFireworks(cx, cy, 1);
@@ -788,8 +784,6 @@ class EffectSettingsScene extends Scene {
     this._time += dt;
     this._back.update(dt, mx, my);
     this._ps.update(dt);
-
-    // 호버 감지 + 자동 미리보기
     this._hoverId = null;
     EFFECT_ORDER.forEach((id, i) => {
       const r = this._cardRect(i);
@@ -808,93 +802,199 @@ class EffectSettingsScene extends Scene {
   draw(ctx) {
     this._nebula.draw(ctx);
     this._starfield.draw(ctx);
-
-    // 헤더
     ctx.fillStyle = 'rgba(5,8,25,0.92)';
     ctx.fillRect(0, 0, this.sw, 62);
     drawNeonText(ctx, '✨ 이펙트 테마 선택', this.sw/2, 31, C.gold, 22, true, 5);
     this._back.draw(ctx);
 
-    // 카드
     EFFECT_ORDER.forEach((id, i) => {
-      const th  = EFFECT_THEMES[id];
-      const r   = this._cardRect(i);
+      const th = EFFECT_THEMES[id];
+      const r  = this._cardRect(i);
       const sel = this._selected === id;
       const hov = this._hoverId === i;
       const mainCol = th.colors[0];
-
       ctx.save();
-      // 카드 배경
-      roundRect(ctx, r.x, r.y, r.w, r.h, 14);
-      if (sel) {
-        // 선택된 카드 — 배경 강조
-        const bg = ctx.createLinearGradient(r.x, r.y, r.x+r.w, r.y+r.h);
-        bg.addColorStop(0, 'rgba(10,20,55,0.97)');
-        bg.addColorStop(1, 'rgba(20,10,40,0.97)');
-        ctx.fillStyle = bg;
-      } else {
-        ctx.fillStyle = hov ? 'rgba(15,22,55,0.92)' : 'rgba(8,12,32,0.82)';
-      }
+      roundRect(ctx, r.x, r.y, r.w, r.h, 12);
+      ctx.fillStyle = sel ? 'rgba(10,20,55,0.97)' : (hov ? 'rgba(15,22,55,0.92)' : 'rgba(8,12,32,0.82)');
       ctx.fill();
-
-      // 테두리
       ctx.strokeStyle = sel ? mainCol : (hov ? 'rgba(120,140,200,0.7)' : 'rgba(30,45,90,0.6)');
-      ctx.lineWidth   = sel ? 2.5 : (hov ? 1.5 : 1);
+      ctx.lineWidth = sel ? 2.5 : (hov ? 1.5 : 1);
       if (sel || hov) { ctx.shadowColor = mainCol; ctx.shadowBlur = sel ? 14 : 6; }
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-      ctx.restore();
+      ctx.stroke(); ctx.shadowBlur = 0; ctx.restore();
 
-      // 색상 팔레트 미리보기 (상단)
-      const dotY = r.y + 22;
+      const dotY = r.y + 20;
       th.colors.slice(0,6).forEach((col, ci) => {
-        const dotX = r.x + 16 + ci * 20;
+        const dotX = r.x + 14 + ci * 18;
         ctx.save();
-        ctx.beginPath(); ctx.arc(dotX, dotY, 7, 0, Math.PI*2);
+        ctx.beginPath(); ctx.arc(dotX, dotY, 6, 0, Math.PI*2);
         ctx.fillStyle = col;
         if (sel) { ctx.shadowColor = col; ctx.shadowBlur = 8; }
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        // 외곽선
-        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        ctx.fill(); ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1; ctx.stroke();
         ctx.restore();
       });
+      drawNeonText(ctx, th.name, r.x + r.w/2, r.y + 48, sel ? mainCol : 'rgba(200,220,255,0.9)', 14, true, sel ? 4 : 1);
+      drawText(ctx, th.desc, r.x + r.w/2, r.y + 68, 'rgba(140,160,200,0.7)', 10);
+      if (sel) {
+        ctx.save();
+        roundRect(ctx, r.x + r.w/2 - 32, r.y + r.h - 24, 64, 18, 8);
+        ctx.fillStyle = mainCol + '33'; ctx.fill();
+        ctx.strokeStyle = mainCol; ctx.lineWidth = 1.5;
+        ctx.shadowColor = mainCol; ctx.shadowBlur = 6; ctx.stroke(); ctx.shadowBlur = 0;
+        drawNeonText(ctx, '✔ 선택됨', r.x + r.w/2, r.y + r.h - 15, mainCol, 11, true, 3);
+        ctx.restore();
+      } else {
+        drawText(ctx, '탭하여 선택', r.x + r.w/2, r.y + r.h - 14, 'rgba(100,130,180,0.4)', 10);
+      }
+    });
+    this._ps.draw(ctx);
+    const cur = getCurrentTheme();
+    ctx.save(); ctx.font = font(12); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(160,200,255,0.5)';
+    ctx.fillText(`현재: ${cur.name}`, this.sw/2, this.sh - 20);
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 비주얼 테마 선택 씬 (배경 + 셀 색상)
+// ═══════════════════════════════════════════════════════════════════════════
+class VisualThemeScene extends Scene {
+  constructor(sw, sh, nebula, starfield) {
+    super(sw, sh);
+    this._nebula    = nebula;
+    this._starfield = starfield;
+    this._ps        = new ParticleSystem();
+    this._time      = 0;
+    this._selected  = Storage.getSettings().visualTheme || 'galaxy';
+    this._hoverId   = null;
+    this._back = new NeonButton(16, 16, 90, 38, '◀ 뒤로', C.neonBlue, 15);
+    this._COLS  = sw < 500 ? 2 : 3;
+    this._CARD_W = Math.floor((sw - 48) / this._COLS);
+    this._CARD_H = 150;
+    this._TOP    = 74;
+  }
+
+  _cardRect(i) {
+    const col = i % this._COLS;
+    const row = Math.floor(i / this._COLS);
+    const x = 16 + col * this._CARD_W;
+    const y = this._TOP + row * (this._CARD_H + 12);
+    return { x, y, w: this._CARD_W - 14, h: this._CARD_H };
+  }
+
+  _cardCenter(i) { const r = this._cardRect(i); return [r.x + r.w/2, r.y + r.h/2]; }
+
+  handleEvent(e) {
+    if (e.type === 'click' || e.type === 'touchend') {
+      const {x, y} = getPoint(e);
+      if (this._back.contains(x, y)) { this._next = { scene:'menu' }; return; }
+      VISUAL_ORDER.forEach((id, i) => {
+        const r = this._cardRect(i);
+        if (x >= r.x && x <= r.x+r.w && y >= r.y && y <= r.y+r.h) {
+          this._selected = id;
+          Storage.updateSetting('visualTheme', id);
+          applyVisualTheme(id);
+          // 배경 강제 리빌드
+          this._nebula._themeId = null;
+          this._nebula._build(this._nebula._canvas.width, this._nebula._canvas.height);
+          this._starfield._themeId = null;
+          this._starfield._rebuildForTheme();
+          // 셀 채우기 파티클 미리보기
+          const [cx, cy] = this._cardCenter(i);
+          const t = VISUAL_THEMES[id];
+          this._ps.spawnFireworksColored(cx, cy, t.particleColors, t.particleKind);
+        }
+      });
+    }
+  }
+
+  update(dt, mx, my) {
+    this._time += dt;
+    this._back.update(dt, mx, my);
+    this._ps.update(dt);
+    this._hoverId = null;
+    VISUAL_ORDER.forEach((id, i) => {
+      const r = this._cardRect(i);
+      if (mx >= r.x && mx <= r.x+r.w && my >= r.y && my <= r.y+r.h) this._hoverId = i;
+    });
+  }
+
+  draw(ctx) {
+    this._nebula.draw(ctx);
+    this._starfield.draw(ctx);
+    ctx.fillStyle = 'rgba(5,8,25,0.92)';
+    ctx.fillRect(0, 0, this.sw, 62);
+    drawNeonText(ctx, '🎨 비주얼 테마 선택', this.sw/2, 31, C.gold, 22, true, 5);
+    this._back.draw(ctx);
+
+    VISUAL_ORDER.forEach((id, i) => {
+      const t = VISUAL_THEMES[id];
+      const r = this._cardRect(i);
+      const sel = this._selected === id;
+      const hov = this._hoverId === i;
+      const accent = t.neonAccent;
+
+      // 카드 배경 — 테마 색상으로 미니 미리보기
+      ctx.save();
+      roundRect(ctx, r.x, r.y, r.w, r.h, 12);
+      const bg = ctx.createLinearGradient(r.x, r.y, r.x+r.w, r.y+r.h);
+      bg.addColorStop(0, t.bg + 'ff');
+      bg.addColorStop(1, t.cellEmpty + 'ff');
+      ctx.fillStyle = bg; ctx.fill();
+      ctx.strokeStyle = sel ? accent : (hov ? 'rgba(200,220,255,0.6)' : 'rgba(80,100,150,0.4)');
+      ctx.lineWidth = sel ? 2.5 : (hov ? 1.5 : 1);
+      if (sel || hov) { ctx.shadowColor = accent; ctx.shadowBlur = sel ? 16 : 6; }
+      ctx.stroke(); ctx.shadowBlur = 0; ctx.restore();
+
+      // 미니 셀 미리보기 (채운 칸 + X칸)
+      const previewY = r.y + 12;
+      const previewX = r.x + r.w/2 - 30;
+      const cs = 16;
+      // 채운 칸 3개
+      for (let pi = 0; pi < 3; pi++) {
+        const px = previewX + pi * (cs + 2);
+        const grad = ctx.createLinearGradient(px, previewY, px+cs, previewY+cs);
+        grad.addColorStop(0, t.cellFilled2); grad.addColorStop(1, t.cellFilled);
+        ctx.fillStyle = grad; ctx.fillRect(px, previewY, cs, cs);
+        ctx.strokeStyle = t.gridLine; ctx.lineWidth = 0.5; ctx.strokeRect(px, previewY, cs, cs);
+      }
+      // X 칸 1개
+      const xpx = previewX + 3 * (cs + 2) + 4;
+      const grad2 = ctx.createLinearGradient(xpx, previewY, xpx+cs, previewY+cs);
+      grad2.addColorStop(0, t.cellFilled2); grad2.addColorStop(1, t.cellFilled);
+      ctx.fillStyle = grad2; ctx.fillRect(xpx, previewY, cs, cs);
+      ctx.strokeStyle = t.xStroke || 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = 2; ctx.lineCap = 'round';
+      const m = cs * 0.22;
+      ctx.beginPath();
+      ctx.moveTo(xpx+m, previewY+m); ctx.lineTo(xpx+cs-m, previewY+cs-m);
+      ctx.moveTo(xpx+cs-m, previewY+m); ctx.lineTo(xpx+m, previewY+cs-m);
+      ctx.stroke();
 
       // 테마 이름
-      drawNeonText(ctx, th.name, r.x + r.w/2, r.y + 54, sel ? mainCol : 'rgba(200,220,255,0.9)',
-        15, true, sel ? 4 : 1);
-
-      // 설명
-      drawText(ctx, th.desc, r.x + r.w/2, r.y + 78, 'rgba(140,160,200,0.75)', 11);
+      drawNeonText(ctx, t.name, r.x + r.w/2, r.y + 52, sel ? accent : 'rgba(220,235,255,0.95)', 14, true, sel ? 5 : 1);
+      drawText(ctx, t.desc, r.x + r.w/2, r.y + 72, 'rgba(170,190,220,0.7)', 10);
 
       // 선택 표시
       if (sel) {
         ctx.save();
-        roundRect(ctx, r.x + r.w/2 - 36, r.y + r.h - 28, 72, 22, 10);
-        ctx.fillStyle = mainCol + '33'; ctx.fill();
-        ctx.strokeStyle = mainCol; ctx.lineWidth = 1.5;
-        ctx.shadowColor = mainCol; ctx.shadowBlur = 6;
-        ctx.stroke(); ctx.shadowBlur = 0;
-        drawNeonText(ctx, '✔ 선택됨', r.x + r.w/2, r.y + r.h - 17, mainCol, 12, true, 3);
+        roundRect(ctx, r.x + r.w/2 - 36, r.y + r.h - 26, 72, 20, 9);
+        ctx.fillStyle = accent + '33'; ctx.fill();
+        ctx.strokeStyle = accent; ctx.lineWidth = 1.5;
+        ctx.shadowColor = accent; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
+        drawNeonText(ctx, '✔ 적용 중', r.x + r.w/2, r.y + r.h - 16, accent, 12, true, 4);
         ctx.restore();
       } else {
-        drawText(ctx, '탭하여 선택', r.x + r.w/2, r.y + r.h - 17, 'rgba(100,130,180,0.45)', 11);
+        drawText(ctx, '탭하여 적용', r.x + r.w/2, r.y + r.h - 16, 'rgba(120,150,200,0.45)', 10);
       }
     });
 
-    // 파티클
     this._ps.draw(ctx);
-
-    // 하단 힌트
-    const th = getCurrentTheme();
-    ctx.save();
-    ctx.font = font(13);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(160,200,255,0.5)';
-    ctx.fillText(`현재: ${th.name} — ${th.desc}`, this.sw/2, this.sh - 22);
+    const cur = VISUAL_THEMES[this._selected] || VISUAL_THEMES.galaxy;
+    ctx.save(); ctx.font = font(12); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(180,210,255,0.55)';
+    ctx.fillText(`현재 테마: ${cur.name} — ${cur.desc}`, this.sw/2, this.sh - 20);
     ctx.restore();
   }
 }
