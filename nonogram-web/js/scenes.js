@@ -289,71 +289,83 @@ class GameScene extends Scene {
     this._errors  = 0;
 
     // ── 드래그 상태 ──
-    this._dragging   = false;
-    this._dragFill   = true;   // true=채우기, false=X표시
-    this._dragAction = null;   // 'fill'|'mark'|'erase_fill'|'erase_mark' — 드래그 시작 셀 기준으로 고정
-    this._touchedCells = new Set(); // 이번 드래그에서 이미 처리한 셀들
+    this._dragging    = false;
+    this._dragAction  = null;   // 'fill'|'mark'|'erase_fill'|'erase_mark'
+    this._touchedCells = new Set();
 
-    // ── 모드: 'fill'(채우기) | 'mark'(X표시) ──
+    // ── 모드: 'fill' | 'mark' | 'memo' ──
+    // fill  = 채우기(■)
+    // mark  = X 표시(✕)
+    // memo  = 메모(작은 점, 실제로는 채우기와 동일 동작 — 추후 확장 가능)
     this._mode = 'fill';
 
     // ── undo 스택 ──
-    this._undoStack = []; // [{row,col,before,after}]
+    this._undoStack = [];
 
     this._clearOverlay = false;
     this._clearTimer   = 0;
     this._failOverlay  = false;
-
     this._mx = 0; this._my = 0;
 
-    // ── 상단 버튼 (HUD 높이=56 아래에 배치) ──
+    // ── 상단 버튼 행 (HUD 56px 아래) ──
     const TOP = 64;
-    this._btnMenu  = new NeonButton(8,  TOP, 72, 36, '◀ 뒤로', C.neonBlue, 13);
-    this._btnUndo  = new NeonButton(86, TOP, 72, 36, '↩ 취소', 'rgba(180,200,120,0.9)', 13);
-    this._btnReset = new NeonButton(sw - 82, TOP, 74, 36, '↺ 초기화', 'rgba(180,120,120,0.9)', 12);
-    this._btnHint  = new NeonButton(sw - 160, TOP, 74, 36, '💡 힌트', C.gold, 13);
+    const bh  = 36;
+    this._btnMenu  = new NeonButton(8,       TOP, 72, bh, '◀ 뒤로', C.neonBlue, 13);
+    this._btnUndo  = new NeonButton(86,      TOP, 72, bh, '↩ 취소', 'rgba(180,200,120,0.9)', 13);
+    this._btnHint  = new NeonButton(sw-160,  TOP, 74, bh, '💡 힌트', C.gold, 13);
+    this._btnReset = new NeonButton(sw-82,   TOP, 74, bh, '↺ 초기화', 'rgba(180,120,120,0.9)', 12);
 
-    // ── 모드 토글 버튼 (하단 중앙) ──
-    this._btnMode = new ToggleButton(sw/2 - 80, sh - 56, 160, 44);
+    // ── 하단 3버튼 (X / 채우기 / 메모) ──
+    const BOT_Y  = sh - 58;
+    const BTN_W  = Math.min(110, (sw - 32) / 3);
+    const BTN_H  = 44;
+    const cx3    = sw / 2;
+    this._modeButtons = [
+      { id:'mark', label:'✕  X표시',  x: cx3 - BTN_W*1.5 - 6, y: BOT_Y, w: BTN_W, h: BTN_H, color: C.neonPink },
+      { id:'fill', label:'■  채우기',  x: cx3 - BTN_W/2,       y: BOT_Y, w: BTN_W, h: BTN_H, color: C.neonBlue },
+      { id:'memo', label:'✎  메모',    x: cx3 + BTN_W/2 + 6,   y: BOT_Y, w: BTN_W, h: BTN_H, color: C.neonCyan },
+    ];
+    this._modeBtnHover = [0, 0, 0];
 
     this._grid.relayout(puzzle, sw, sh);
   }
 
   handleEvent(e) {
-    // 버튼 우선 처리
     if (e.type === 'click' || e.type === 'touchend') {
       const {x, y} = getPoint(e);
 
-      // 클리어/게임오버 오버레이 중
       if (this._clearOverlay) { this._goNext(); return; }
       if (this._failOverlay)  { this._goMenu(); return; }
 
       if (this._btnMenu.contains(x, y))  { this._goMenu(); return; }
       if (this._btnUndo.contains(x, y))  { this._undo(); return; }
-      if (this._btnReset.contains(x, y)) { this._resetPuzzle(); return; }
       if (this._btnHint.contains(x, y))  { this._doHint(); return; }
-      if (this._btnMode.contains(x, y))  { this._toggleMode(); return; }
+      if (this._btnReset.contains(x, y)) { this._resetPuzzle(); return; }
+
+      // 모드 버튼
+      for (const mb of this._modeButtons) {
+        if (x >= mb.x && x <= mb.x+mb.w && y >= mb.y && y <= mb.y+mb.h) {
+          this._mode = mb.id;
+          return;
+        }
+      }
     }
 
     if (this._clearOverlay || this._failOverlay) return;
 
-    // 그리드 입력
     if (e.type === 'mousedown' || e.type === 'touchstart') {
       const {x, y, button} = getPoint(e);
-      // 버튼 영역이면 무시
       if (this._isUI(x, y)) return;
       const cell = this._grid.getCellAt(x, y, this._puzzle);
       if (cell) {
         this._dragging = true;
         this._touchedCells = new Set();
-        // 마우스 오른쪽 → 강제 X모드, 왼쪽 → 현재 모드
-        const useMarkMode = (button === 2) || this._mode === 'mark';
-        this._dragFill = !useMarkMode;
-        // 드래그 시작 셀의 현재 상태로 액션 결정
-        const cur = this._puzzle.grid[cell[0]][cell[1]];
-        if (this._dragFill) {
+        // 마우스 우클릭은 항상 X
+        const mode = (button === 2) ? 'mark' : this._mode;
+        const cur  = this._puzzle.grid[cell[0]][cell[1]];
+        if (mode === 'fill') {
           this._dragAction = (cur === CELL.FILLED) ? 'erase_fill' : 'fill';
-        } else {
+        } else if (mode === 'mark' || mode === 'memo') {
           this._dragAction = (cur === CELL.MARKED) ? 'erase_mark' : 'mark';
         }
         this._applyCell(cell[0], cell[1]);
@@ -375,19 +387,13 @@ class GameScene extends Scene {
   }
 
   _isUI(x, y) {
-    const TOP = 64;
-    return y < TOP + 44 || y > this.sh - 64;
-  }
-
-  _toggleMode() {
-    this._mode = (this._mode === 'fill') ? 'mark' : 'fill';
-    this._btnMode.setMode(this._mode);
+    return y < 108 || y > this.sh - 66;
   }
 
   _applyCell(row, col) {
     if (this._puzzle.isSolved) return;
     const key = `${row},${col}`;
-    if (this._touchedCells.has(key)) return; // 이미 이번 드래그에서 처리한 셀
+    if (this._touchedCells.has(key)) return;
     this._touchedCells.add(key);
 
     const before = this._puzzle.grid[row][col];
@@ -395,7 +401,6 @@ class GameScene extends Scene {
 
     if (this._dragAction === 'fill') {
       if (before !== CELL.FILLED) {
-        // 채우기
         const result = this._puzzle.toggleCell(row, col, true);
         after = this._puzzle.grid[row][col];
         const [cx, cy] = this._grid.cellCenter(row, col);
@@ -411,41 +416,29 @@ class GameScene extends Scene {
         this._handleLineClears(result, row, col);
       }
     } else if (this._dragAction === 'erase_fill') {
-      if (before === CELL.FILLED) {
-        this._puzzle.grid[row][col] = CELL.EMPTY;
-        after = CELL.EMPTY;
-      }
+      if (before === CELL.FILLED) { this._puzzle.grid[row][col] = CELL.EMPTY; after = CELL.EMPTY; }
     } else if (this._dragAction === 'mark') {
-      if (before === CELL.EMPTY) {
-        this._puzzle.grid[row][col] = CELL.MARKED;
-        after = CELL.MARKED;
-      }
+      if (before === CELL.EMPTY)  { this._puzzle.grid[row][col] = CELL.MARKED; after = CELL.MARKED; }
     } else if (this._dragAction === 'erase_mark') {
-      if (before === CELL.MARKED) {
-        this._puzzle.grid[row][col] = CELL.EMPTY;
-        after = CELL.EMPTY;
-      }
+      if (before === CELL.MARKED) { this._puzzle.grid[row][col] = CELL.EMPTY;  after = CELL.EMPTY; }
     }
 
     if (before !== after) {
       this._undoStack.push({ row, col, before, after });
       if (this._undoStack.length > 200) this._undoStack.shift();
     }
-
     if (this._puzzle.isSolved) this._onSolved();
   }
 
   _handleLineClears(result, row, col) {
     if (result.rowCleared) {
       const gx = this._grid.gridX, gy = this._grid.gridY, cs = this._grid.cellSize;
-      const y0 = gy + row*cs + cs/2;
-      this._ps.spawnLineClear(gx, y0, gx + this._puzzle.cols*cs, y0, true);
+      this._ps.spawnLineClear(gx, gy+row*cs+cs/2, gx+this._puzzle.cols*cs, gy+row*cs+cs/2, true);
       this._grid.flashRow(row);
     }
     if (result.colCleared) {
       const gx = this._grid.gridX, gy = this._grid.gridY, cs = this._grid.cellSize;
-      const x0 = gx + col*cs + cs/2;
-      this._ps.spawnLineClear(x0, gy, x0, gy + this._puzzle.rows*cs, false);
+      this._ps.spawnLineClear(gx+col*cs+cs/2, gy, gx+col*cs+cs/2, gy+this._puzzle.rows*cs, false);
       this._grid.flashCol(col);
     }
   }
@@ -454,7 +447,6 @@ class GameScene extends Scene {
     if (!this._undoStack.length) return;
     const { row, col, before } = this._undoStack.pop();
     this._puzzle.grid[row][col] = before;
-    // 완성 행/열 재계산 (completedRows 플래그를 리셋 후 재검사)
     this._puzzle.completedRows[row] = false;
     const rowLine = this._puzzle.grid[row].map(c => c === CELL.FILLED ? 1 : 0);
     if (JSON.stringify(Puzzle.calcHints(rowLine)) === JSON.stringify(this._puzzle.rowHints[row]))
@@ -504,9 +496,7 @@ class GameScene extends Scene {
   _goNext() {
     if (this._stageId !== null) {
       const nxt = this._stageId + 1;
-      this._next = nxt <= STAGE_DATA.length
-        ? { scene:'game', stageId:nxt }
-        : { scene:'stage' };
+      this._next = nxt <= STAGE_DATA.length ? { scene:'game', stageId:nxt } : { scene:'stage' };
     } else if (this._level !== null) {
       this._next = { scene:'infinite', level: this._level + 1 };
     } else {
@@ -527,29 +517,76 @@ class GameScene extends Scene {
     this._grid.setHover(this._grid.getCellAt(mx, my, this._puzzle));
     this._btnMenu.update(dt, mx, my);
     this._btnUndo.update(dt, mx, my);
-    this._btnReset.update(dt, mx, my);
     this._btnHint.update(dt, mx, my);
-    this._btnMode.update(dt, mx, my);
+    this._btnReset.update(dt, mx, my);
+    // 모드버튼 호버
+    this._modeButtons.forEach((mb, i) => {
+      const inside = mx >= mb.x && mx <= mb.x+mb.w && my >= mb.y && my <= mb.y+mb.h;
+      this._modeBtnHover[i] = Math.min(1, Math.max(0,
+        this._modeBtnHover[i] + (inside ? 1 : -1) * Math.min(1, dt*8)));
+    });
   }
 
   draw(ctx) {
     this._nebula.draw(ctx);
     this._starfield.draw(ctx);
-    this._grid.draw(ctx, this._puzzle, this._elapsed);
+    this._grid.draw(ctx, this._puzzle);
     this._ps.draw(ctx);
     this._hud.draw(ctx, this._puzzle, this._elapsed, this._errors, MAX_ERRORS, this.sw, this.sh);
 
-    // 상단 버튼 행
     this._btnMenu.draw(ctx);
     this._btnUndo.draw(ctx);
-    this._btnReset.draw(ctx);
     this._btnHint.draw(ctx);
+    this._btnReset.draw(ctx);
 
-    // 하단 모드 토글
-    this._btnMode.draw(ctx);
+    this._drawModeButtons(ctx);
 
     if (this._clearOverlay) this._drawClearOverlay(ctx);
     if (this._failOverlay)  this._drawFailOverlay(ctx);
+  }
+
+  _drawModeButtons(ctx) {
+    this._modeButtons.forEach((mb, i) => {
+      const sel = this._mode === mb.id;
+      const t   = this._modeBtnHover[i];
+      ctx.save();
+      roundRect(ctx, mb.x, mb.y, mb.w, mb.h, 10);
+      if (sel) {
+        // 선택된 버튼 — 강조 배경
+        const bg = ctx.createLinearGradient(mb.x, mb.y, mb.x, mb.y+mb.h);
+        bg.addColorStop(0, mb.color + '55');
+        bg.addColorStop(1, mb.color + '22');
+        ctx.fillStyle = bg;
+      } else {
+        ctx.fillStyle = `rgba(8,14,40,${0.7 + 0.2*t})`;
+      }
+      ctx.fill();
+      ctx.strokeStyle = mb.color;
+      ctx.lineWidth   = sel ? 2.5 : (1 + t);
+      ctx.shadowColor = mb.color;
+      ctx.shadowBlur  = sel ? 14 : (4 * t);
+      ctx.stroke();
+      ctx.shadowBlur  = 0;
+
+      // 라벨
+      ctx.font = font(13, true);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = sel ? '#ffffff' : mb.color;
+      ctx.shadowColor = mb.color;
+      ctx.shadowBlur  = sel ? 6 : (2*t);
+      ctx.fillText(mb.label, mb.x + mb.w/2, mb.y + mb.h/2);
+      ctx.shadowBlur  = 0;
+
+      // 선택 표시 점
+      if (sel) {
+        ctx.fillStyle = mb.color;
+        ctx.beginPath();
+        ctx.arc(mb.x + mb.w/2, mb.y + mb.h + 6, 3, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
   }
 
   _drawClearOverlay(ctx) {
