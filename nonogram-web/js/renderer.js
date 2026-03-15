@@ -38,7 +38,6 @@ function drawNeonText(ctx, text, x, y, color, size, bold = false, glowRadius = 6
   ctx.font = font(size, bold);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  // 글로우
   ctx.shadowColor = color;
   ctx.shadowBlur = glowRadius * 3;
   ctx.fillStyle = color;
@@ -79,7 +78,7 @@ class NeonButton {
   constructor(x, y, w, h, label, color = C.neonBlue, fontSize = 20) {
     this.x = x; this.y = y; this.w = w; this.h = h;
     this.label = label; this.color = color; this.fontSize = fontSize;
-    this._hover = 0; // 0~1
+    this._hover = 0;
     this.enabled = true;
   }
 
@@ -99,18 +98,15 @@ class NeonButton {
   draw(ctx) {
     const t = this._hover;
     ctx.save();
-    // 배경
     roundRect(ctx, this.x, this.y, this.w, this.h, 10);
     ctx.fillStyle = `rgba(10,20,60,${0.6 + 0.3*t})`;
     ctx.fill();
-    // 테두리 글로우
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 1.5 + t;
     ctx.shadowColor = this.color;
     ctx.shadowBlur = 8 * t;
     ctx.stroke();
     ctx.shadowBlur = 0;
-    // 텍스트
     drawNeonText(ctx, this.label,
       this.x + this.w/2, this.y + this.h/2,
       this.color, this.fontSize, true, t > 0.1 ? 4 : 1);
@@ -128,19 +124,23 @@ class GridRenderer {
     this.gridY = 0;
     this._shakeX = 0; this._shakeY = 0;
     this._shakeDur = 0; this._shakeMag = 0;
-    this._cellGlow = {};   // 'r,c' → timer
-    this._rowFlash = {};   // row → timer
-    this._colFlash = {};   // col → timer
+    this._cellGlow = {};
+    this._rowFlash = {};
+    this._colFlash = {};
     this._hover = null;
   }
 
-  layout(puzzle, canvasW, canvasH) {
+  // 게임 씬용 레이아웃 — 상단/하단 UI 영역을 명시적으로 비워줌
+  relayout(puzzle, canvasW, canvasH) {
+    const TOP_PAD = 112; // HUD(56) + 버튼행(44) + 여유
+    const BOT_PAD = 76;  // 모드버튼(44) + 여유
+    const avW = canvasW - 32;
+    const avH = canvasH - TOP_PAD - BOT_PAD;
+
     const MAX_HINT_COLS = Math.max(...puzzle.colHints.map(h => h.length));
     const MAX_HINT_ROWS = Math.max(...puzzle.rowHints.map(h => h.length));
-    const avW = canvasW - 100;
-    const avH = canvasH - 140;
 
-    for (let cs = 48; cs >= 16; cs--) {
+    for (let cs = 48; cs >= 10; cs--) {
       const hw = MAX_HINT_COLS * cs;
       const hh = MAX_HINT_ROWS * cs;
       if (hw + puzzle.cols * cs <= avW && hh + puzzle.rows * cs <= avH) {
@@ -153,7 +153,12 @@ class GridRenderer {
     const tw = this.hintColW + puzzle.cols * this.cellSize;
     const th = this.hintRowH + puzzle.rows * this.cellSize;
     this.gridX = (canvasW - tw) / 2 + this.hintColW;
-    this.gridY = (canvasH - th) / 2 + this.hintRowH + 20;
+    this.gridY = TOP_PAD + (avH - th) / 2 + this.hintRowH;
+  }
+
+  // 메뉴/일반 씬용 레이아웃 (하위 호환)
+  layout(puzzle, canvasW, canvasH) {
+    this.relayout(puzzle, canvasW, canvasH);
   }
 
   shake(mag = 8, dur = 0.35) { this._shakeDur = dur; this._shakeMag = mag; }
@@ -193,10 +198,10 @@ class GridRenderer {
     ];
   }
 
-  draw(ctx, puzzle, time = 0) {
+  draw(ctx, puzzle) {
     const cs = this.cellSize;
-    const ox = this._shakeX, oy = this._shakeY;
-    const gx = this.gridX + ox, gy = this.gridY + oy;
+    const gx = this.gridX + this._shakeX;
+    const gy = this.gridY + this._shakeY;
 
     // ── 힌트 배경 ──
     ctx.save();
@@ -238,16 +243,13 @@ class GridRenderer {
         const isHover = this._hover && this._hover[0]===r && this._hover[1]===c;
 
         if (state === CELL.FILLED) {
-          // 그라디언트 채우기
           const grad = ctx.createLinearGradient(x, y, x, y+cs);
           grad.addColorStop(0, C.cellFilled2);
           grad.addColorStop(1, C.cellFilled);
           ctx.fillStyle = grad;
           ctx.fillRect(x, y, cs, cs);
-          // 하이라이트
           ctx.fillStyle = 'rgba(255,255,255,0.18)';
           ctx.fillRect(x+2, y+2, cs-8, 3);
-          // 글로우
           if (glow > 0) {
             ctx.save();
             ctx.shadowColor = C.neonBlue;
@@ -259,9 +261,9 @@ class GridRenderer {
         } else if (state === CELL.MARKED) {
           ctx.fillStyle = C.cellMarked;
           ctx.fillRect(x, y, cs, cs);
-          const m = cs/5;
-          ctx.strokeStyle = 'rgba(100,100,160,0.8)';
-          ctx.lineWidth = 2;
+          const m = cs * 0.22;
+          ctx.strokeStyle = 'rgba(255,100,150,0.85)';
+          ctx.lineWidth = Math.max(1.5, cs * 0.12);
           ctx.beginPath();
           ctx.moveTo(x+m, y+m); ctx.lineTo(x+cs-m, y+cs-m);
           ctx.moveTo(x+cs-m, y+m); ctx.lineTo(x+m, y+cs-m);
@@ -327,57 +329,68 @@ class GridRenderer {
   }
 }
 
-// ── HUD ───────────────────────────────────────────────────────────────────
+// ── HUD (상단 56px: 타이틀/타이머/오류, 56~108px: 버튼 행) ─────────────────
 class HUD {
   draw(ctx, puzzle, elapsed, errors, maxErrors, sw, sh) {
-    // 상단 바
-    ctx.fillStyle = 'rgba(5,8,25,0.88)';
-    ctx.fillRect(0, 0, sw, 52);
+    // 상단 바 (0~56)
+    ctx.fillStyle = 'rgba(5,8,25,0.92)';
+    ctx.fillRect(0, 0, sw, 56);
     ctx.strokeStyle = C.panelBorder;
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(0, 52); ctx.lineTo(sw, 52); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 56); ctx.lineTo(sw, 56); ctx.stroke();
 
-    // 타이틀
-    drawNeonText(ctx, puzzle.title, sw/2, 26, C.neonCyan, 20, true, 4);
+    // 타이틀 중앙
+    drawNeonText(ctx, puzzle.title, sw/2, 28, C.neonCyan, 17, true, 3);
 
-    // 타이머
+    // 타이머 좌
     const mins = String(Math.floor(elapsed/60)).padStart(2,'0');
     const secs = String(Math.floor(elapsed%60)).padStart(2,'0');
-    drawNeonText(ctx, `${mins}:${secs}`, 70, 26, C.timer, 18, true, 2);
-
-    // 오류 카운터
-    const errCol = errors >= maxErrors ? C.errorRed : 'rgba(220,120,120,0.9)';
-    const errTxt = `오류: ${'✕'.repeat(errors)}${'○'.repeat(maxErrors-errors)}`;
     ctx.save();
-    ctx.font = font(16);
+    ctx.font = font(14, true);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = C.timer;
+    ctx.fillText(`⏱ ${mins}:${secs}`, 10, 28);
+    ctx.restore();
+
+    // 오류 카운터 우
+    const errCol = errors >= maxErrors ? C.errorRed : 'rgba(220,120,120,0.9)';
+    ctx.save();
+    ctx.font = font(14, true);
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = errCol;
-    ctx.fillText(errTxt, sw - 16, 26);
+    ctx.fillText(`✕ ${errors}/${maxErrors}`, sw - 10, 28);
     ctx.restore();
 
-    // 진행률 바
+    // 버튼 행 배경 (56~108)
+    ctx.fillStyle = 'rgba(5,8,25,0.78)';
+    ctx.fillRect(0, 56, sw, 52);
+    ctx.strokeStyle = 'rgba(25,40,90,0.7)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, 108); ctx.lineTo(sw, 108); ctx.stroke();
+
+    // 하단 영역 배경 (모드버튼 뒤)
+    ctx.fillStyle = 'rgba(5,8,25,0.82)';
+    ctx.fillRect(0, sh - 68, sw, 68);
+    ctx.strokeStyle = 'rgba(25,40,90,0.7)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, sh - 68); ctx.lineTo(sw, sh - 68); ctx.stroke();
+
+    // 진행률 바 (하단)
     const prog = puzzle.progress();
-    const bw = Math.min(220, sw * 0.3);
-    const bx = sw/2 - bw/2, by = sh - 28;
-    roundRect(ctx, bx, by, bw, 10, 5);
+    const bw = Math.min(180, sw * 0.25);
+    const bx = sw/2 - bw/2, by = sh - 16;
+    roundRect(ctx, bx, by, bw, 7, 3);
     ctx.fillStyle = C.progressBg; ctx.fill();
     if (prog > 0) {
-      roundRect(ctx, bx, by, bw * prog, 10, 5);
+      roundRect(ctx, bx, by, bw * prog, 7, 3);
       const grad = ctx.createLinearGradient(bx, 0, bx+bw, 0);
       grad.addColorStop(0, '#3cb4ff');
       grad.addColorStop(1, '#78e8ff');
       ctx.fillStyle = grad; ctx.fill();
     }
     ctx.strokeStyle = C.panelBorder; ctx.lineWidth = 1;
-    roundRect(ctx, bx, by, bw, 10, 5); ctx.stroke();
-
-    ctx.save();
-    ctx.font = font(12);
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = C.timer;
-    ctx.fillText(`${Math.round(prog*100)}%`, bx + bw + 8, by + 5);
-    ctx.restore();
+    roundRect(ctx, bx, by, bw, 7, 3); ctx.stroke();
   }
 }
