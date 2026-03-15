@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Nonogram Galaxy" />
+  <meta name="theme-color" content="#05051a" />
+  <title>Nonogram Galaxy</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- 오프라인 알림 -->
+  <div id="offlineBanner" class="offline-banner hidden">
+    📡 오프라인 모드 — 저장된 데이터로 플레이 중
+  </div>
+
+  <!-- PWA 설치 버튼 -->
+  <div id="installBanner" class="install-banner hidden">
+    <span>홈 화면에 추가하면 오프라인에서도 플레이!</span>
+    <button id="installBtn">설치</button>
+    <button id="installClose">✕</button>
+  </div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/puzzle.js"></script>
+  <script src="js/stages.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/scenes.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

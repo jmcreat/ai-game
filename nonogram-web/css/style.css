@@ -1,0 +1,76 @@
+/* ── 전역 리셋 ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #05051a;
+  font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+
+#gameCanvas {
+  display: block;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  cursor: crosshair;
+}
+
+/* ── 오프라인 배너 ── */
+.offline-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background: rgba(255, 160, 40, 0.92);
+  color: #1a1a1a;
+  text-align: center;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: bold;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+  transition: transform 0.3s ease;
+}
+
+/* ── PWA 설치 배너 ── */
+.install-banner {
+  position: fixed;
+  bottom: 20px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 20, 60, 0.95);
+  border: 1px solid rgba(80, 160, 255, 0.5);
+  border-radius: 16px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #c0d8ff;
+  font-size: 14px;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 20px rgba(60, 140, 255, 0.3);
+  max-width: 90vw;
+}
+
+.install-banner button {
+  background: rgba(60, 140, 255, 0.8);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.install-banner button:hover { background: rgba(80, 180, 255, 0.9); }
+
+#installClose {
+  background: transparent !important;
+  color: rgba(160, 180, 220, 0.7) !important;
+  padding: 4px 8px !important;
+}
+
+.hidden { display: none !important; }
