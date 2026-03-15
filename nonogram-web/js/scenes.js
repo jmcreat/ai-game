@@ -426,6 +426,14 @@ class GameScene extends Scene {
           this._grid.glowCell(row, col);
         }
         this._handleLineClears(result, row, col);
+
+        // 이미 완성된 행/열인데 아직 자동 X 안 된 칸이 있으면 채움
+        if (!result.rowCleared && this._puzzle.completedRows[row]) {
+          this._autoMarkRow(row);
+        }
+        if (!result.colCleared && this._puzzle.completedCols[col]) {
+          this._autoMarkCol(col);
+        }
       }
     } else if (this._dragAction === 'erase_fill') {
       if (before === CELL.FILLED) { this._puzzle.grid[row][col] = CELL.EMPTY; after = CELL.EMPTY; }
