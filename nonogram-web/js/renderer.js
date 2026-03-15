@@ -264,8 +264,8 @@ class GridRenderer {
   // 게임 씬용 레이아웃 — 상단/하단 UI 영역을 명시적으로 비워줌
   relayout(puzzle, canvasW, canvasH) {
     const TOP_PAD = 112; // HUD(56) + 버튼행(44) + 여유
-    const BOT_PAD = 76;  // 모드버튼(44) + 여유
-    const avW = canvasW - 32;
+    const BOT_PAD = 96;  // 모드버튼(44) + 열 카운터 공간(20) + 여유
+    const avW = canvasW - 56; // 오른쪽 행 카운터 공간 확보
     const avH = canvasH - TOP_PAD - BOT_PAD;
 
     const MAX_HINT_COLS = Math.max(...puzzle.colHints.map(h => h.length));
@@ -492,20 +492,45 @@ class GridRenderer {
     ctx.textBaseline = 'middle';
     ctx.font = font(hintFontSize, true);
 
+    // 현재 그리드에서 행/열별 실제 블록 현황 계산
+    const rowBlocks = Array.from({length: puzzle.rows}, (_, r) =>
+      Puzzle.calcHints(puzzle.grid[r].map(c => c === CELL.FILLED ? 1 : 0)));
+    const colBlocks = Array.from({length: puzzle.cols}, (_, c) =>
+      Puzzle.calcHints(puzzle.grid.map(row => row[c] === CELL.FILLED ? 1 : 0)));
+
     // 행 힌트 (왼쪽 영역에만 그리기)
     ctx.save();
     ctx.beginPath();
     ctx.rect(gx - this.hintColW, gy, this.hintColW, puzzle.rows * cs);
     ctx.clip();
     for (let r = 0; r < puzzle.rows; r++) {
-      const hints = puzzle.rowHints[r];
+      const hints  = puzzle.rowHints[r];
+      const actual = rowBlocks[r];
       const hy = gy + r*cs + cs/2;
       const n = hints.length;
+      const done = puzzle.completedRows[r];
       hints.forEach((num, i) => {
         const hx = gx - this.hintColW + (i+0.5) * this.hintColW / n;
-        ctx.fillStyle = puzzle.completedRows[r] ? C.hintDone : C.hintNormal;
+        // 힌트 숫자와 실제 블록 매칭
+        const cur = actual[i] ?? 0;
+        let col;
+        if (done) {
+          col = C.hintDone; // 완성: 초록
+        } else if (cur === num) {
+          col = '#80ffaa'; // 이 블록만 맞음: 밝은 초록
+        } else if (cur > 0 && cur < num) {
+          col = C.gold;    // 진행 중: 금색
+        } else if (cur > num) {
+          col = C.errorRed; // 초과: 빨강
+        } else {
+          col = C.hintNormal;
+        }
+        ctx.fillStyle = col;
         ctx.textAlign = 'center';
+        // 완성 블록은 취소선 스타일로 dim
+        if (done) ctx.globalAlpha = 0.6;
         ctx.fillText(String(num), hx, hy);
+        ctx.globalAlpha = 1;
       });
     }
     ctx.restore();
@@ -516,14 +541,31 @@ class GridRenderer {
     ctx.rect(gx, gy - this.hintRowH, puzzle.cols * cs, this.hintRowH);
     ctx.clip();
     for (let c = 0; c < puzzle.cols; c++) {
-      const hints = puzzle.colHints[c];
+      const hints  = puzzle.colHints[c];
+      const actual = colBlocks[c];
       const hx = gx + c*cs + cs/2;
       const n = hints.length;
+      const done = puzzle.completedCols[c];
       hints.forEach((num, i) => {
         const hy = gy - this.hintRowH + (i+0.5) * this.hintRowH / n;
-        ctx.fillStyle = puzzle.completedCols[c] ? C.hintDone : C.hintNormal;
+        const cur = actual[i] ?? 0;
+        let col;
+        if (done) {
+          col = C.hintDone;
+        } else if (cur === num) {
+          col = '#80ffaa';
+        } else if (cur > 0 && cur < num) {
+          col = C.gold;
+        } else if (cur > num) {
+          col = C.errorRed;
+        } else {
+          col = C.hintNormal;
+        }
+        ctx.fillStyle = col;
         ctx.textAlign = 'center';
+        if (done) ctx.globalAlpha = 0.6;
         ctx.fillText(String(num), hx, hy);
+        ctx.globalAlpha = 1;
       });
     }
     ctx.restore();
@@ -536,8 +578,58 @@ class GridRenderer {
     ctx.shadowBlur = 8;
     ctx.strokeRect(gx, gy, puzzle.cols*cs, puzzle.rows*cs);
     ctx.restore();
+
+    // ── 행/열 블록 카운터 오버레이 (채운 블록 수 실시간 표시) ──
+    if (cs >= 14) this._drawBlockCounters(ctx, puzzle, gx, gy, cs);
   }
-}
+
+  // 각 행/열에 현재 채워진 블록 수를 힌트 옆에 작게 표시
+  _drawBlockCounters(ctx, puzzle, gx, gy, cs) {
+    const fs = Math.max(8, Math.min(cs - 6, 13));
+    ctx.font = font(fs, true);
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+
+    // ── 행: 그리드 오른쪽 바깥에 표시 ──
+    const ROW_X = gx + puzzle.cols * cs + Math.max(10, cs * 0.5);
+    for (let r = 0; r < puzzle.rows; r++) {
+      if (puzzle.completedRows[r]) continue;
+      const line = puzzle.grid[r].map(c => c === CELL.FILLED ? 1 : 0);
+      const filled = line.reduce((a, v) => a + v, 0);
+      const total  = puzzle.rowHints[r].reduce((a, v) => a + v, 0);
+      if (filled === 0) continue;
+      const hy = gy + r * cs + cs / 2;
+      const ratio = filled / total;
+      const col = ratio >= 1 ? '#80ffaa' : ratio >= 0.6 ? C.gold : C.neonBlue;
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = col;
+      ctx.shadowColor = col; ctx.shadowBlur = 4;
+      ctx.fillText(`${filled}`, ROW_X, hy);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
+    // ── 열: 그리드 아래쪽 바깥에 표시 ──
+    const COL_Y = gy + puzzle.rows * cs + Math.max(10, cs * 0.5);
+    for (let c = 0; c < puzzle.cols; c++) {
+      if (puzzle.completedCols[c]) continue;
+      const line = puzzle.grid.map(row => row[c] === CELL.FILLED ? 1 : 0);
+      const filled = line.reduce((a, v) => a + v, 0);
+      const total  = puzzle.colHints[c].reduce((a, v) => a + v, 0);
+      if (filled === 0) continue;
+      const hx = gx + c * cs + cs / 2;
+      const ratio = filled / total;
+      const col = ratio >= 1 ? '#80ffaa' : ratio >= 0.6 ? C.gold : C.neonBlue;
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = col;
+      ctx.shadowColor = col; ctx.shadowBlur = 4;
+      ctx.fillText(`${filled}`, hx, COL_Y);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+  }
 
 // ── HUD (상단 56px: 타이틀/타이머/오류, 56~108px: 버튼 행) ─────────────────
 class HUD {
