@@ -15,7 +15,8 @@ const Storage = (() => {
     settings: {
       sfx: true,
       particles: true,
-      colorScheme: 'galaxy',    // galaxy | neon | classic
+      colorScheme: 'galaxy',
+      effectTheme: 'galaxy',    // galaxy | fire | ice | neon | sakura | rainbow
     },
     lastPlayed: null,
   });

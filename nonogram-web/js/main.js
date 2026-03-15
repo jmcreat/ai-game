@@ -81,6 +81,9 @@ class SceneManager {
           { isDaily: true });
         break;
       }
+      case 'effect_settings':
+        this._scene = new EffectSettingsScene(sw, sh, this._nebula, this._stars);
+        break;
     }
   }
 

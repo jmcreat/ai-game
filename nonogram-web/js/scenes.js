@@ -33,9 +33,10 @@ class MainMenuScene extends Scene {
     this._starfield = starfield;
     this._time = 0;
     this._buttons = [
-      new NeonButton(sw/2-140, sh/2-20,  280, 52, '스테이지 플레이', C.neonBlue,   22),
-      new NeonButton(sw/2-140, sh/2+50,  280, 52, '무한 모드 ∞',    C.neonPurple, 22),
-      new NeonButton(sw/2-140, sh/2+120, 280, 52, '오늘의 퍼즐 📅',  C.neonCyan,   22),
+      new NeonButton(sw/2-140, sh/2-30,  280, 50, '스테이지 플레이', C.neonBlue,   20),
+      new NeonButton(sw/2-140, sh/2+36,  280, 50, '무한 모드 ∞',    C.neonPurple, 20),
+      new NeonButton(sw/2-140, sh/2+102, 280, 50, '오늘의 퍼즐 📅',  C.neonCyan,   20),
+      new NeonButton(sw/2-140, sh/2+166, 280, 50, '✨ 이펙트 설정',  C.gold,       20),
     ];
     this._stats = Storage.getStats();
   }
@@ -46,6 +47,7 @@ class MainMenuScene extends Scene {
       if (this._buttons[0].contains(x, y)) this._next = { scene:'stage' };
       if (this._buttons[1].contains(x, y)) this._next = { scene:'infinite_setup' };
       if (this._buttons[2].contains(x, y)) this._next = { scene:'daily' };
+      if (this._buttons[3].contains(x, y)) this._next = { scene:'effect_settings' };
     }
   }
 
@@ -61,7 +63,7 @@ class MainMenuScene extends Scene {
     const t = this._time;
     const glow = 6 + 4*Math.sin(t*2);
     ctx.save();
-    ctx.font = font(52, true);
+    ctx.font = font(48, true);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.shadowColor = C.neonCyan;
@@ -71,22 +73,32 @@ class MainMenuScene extends Scene {
     grad.addColorStop(0.5, '#ffffff');
     grad.addColorStop(1, '#b450ff');
     ctx.fillStyle = grad;
-    ctx.fillText('Nonogram Galaxy', this.sw/2, this.sh/2 - 140);
+    ctx.fillText('Nonogram Galaxy', this.sw/2, this.sh/2 - 155);
     ctx.shadowBlur = 0;
-    ctx.font = font(20);
+    ctx.font = font(18);
     ctx.fillStyle = 'rgba(160,200,255,0.7)';
-    ctx.fillText('✦ 우주를 완성하라 ✦', this.sw/2, this.sh/2 - 88);
+    ctx.fillText('✦ 우주를 완성하라 ✦', this.sw/2, this.sh/2 - 105);
+    ctx.restore();
+
+    // 현재 테마 표시
+    const th = getCurrentTheme();
+    ctx.save();
+    ctx.font = font(13);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = C.gold;
+    ctx.fillText(`이펙트: ${th.name}`, this.sw/2, this.sh/2 + 232);
     ctx.restore();
 
     this._buttons.forEach(b => b.draw(ctx));
 
     const s = this._stats;
     ctx.save();
-    ctx.font = font(14);
+    ctx.font = font(13);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = 'rgba(120,160,200,0.6)';
-    ctx.fillText(`클리어 ${s.cleared}  |  최고 레벨 ${s.infiniteLevel}  |  플레이 ${fmtTime(s.playTime)}`, this.sw/2, this.sh - 32);
+    ctx.fillText(`클리어 ${s.cleared}  |  최고 레벨 ${s.infiniteLevel}  |  플레이 ${fmtTime(s.playTime)}`, this.sw/2, this.sh - 28);
     ctx.restore();
   }
 }
@@ -622,6 +634,174 @@ class ToggleButton {
     ctx.font = font(10);
     ctx.fillStyle = 'rgba(160,180,220,0.5)';
     ctx.fillText('탭하여 전환', this.x + this.w/2, this.y + this.h + 12);
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 이펙트 설정 씬
+// ═══════════════════════════════════════════════════════════════════════════
+class EffectSettingsScene extends Scene {
+  constructor(sw, sh, nebula, starfield) {
+    super(sw, sh);
+    this._nebula   = nebula;
+    this._starfield = starfield;
+    this._ps       = new ParticleSystem();
+    this._time     = 0;
+    this._selected = Storage.getSettings().effectTheme || 'galaxy';
+    this._hoverId  = null;
+    this._previewTimer = {};    // themeId → cooldown
+    this._back = new NeonButton(16, 16, 90, 38, '◀ 뒤로', C.neonBlue, 15);
+
+    // 카드 배치 계산
+    this._COLS  = sw < 500 ? 2 : 3;
+    this._CARD_W = Math.floor((sw - 48) / this._COLS);
+    this._CARD_H = 140;
+    this._TOP    = 74;
+  }
+
+  _cardRect(i) {
+    const col = i % this._COLS;
+    const row = Math.floor(i / this._COLS);
+    const x = 16 + col * this._CARD_W;
+    const y = this._TOP + row * (this._CARD_H + 14);
+    return { x, y, w: this._CARD_W - 14, h: this._CARD_H };
+  }
+
+  _cardCenter(i) {
+    const r = this._cardRect(i);
+    return [r.x + r.w/2, r.y + r.h/2];
+  }
+
+  handleEvent(e) {
+    if (e.type === 'click' || e.type === 'touchend') {
+      const {x, y} = getPoint(e);
+      if (this._back.contains(x, y)) { this._next = { scene:'menu' }; return; }
+      EFFECT_ORDER.forEach((id, i) => {
+        const r = this._cardRect(i);
+        if (x >= r.x && x <= r.x+r.w && y >= r.y && y <= r.y+r.h) {
+          this._selected = id;
+          Storage.updateSetting('effectTheme', id);
+          // 선택 시 미리보기 파티클
+          const [cx, cy] = this._cardCenter(i);
+          this._ps.spawnPreview(cx, cy, id);
+          this._ps.spawnFireworks(cx, cy, 1);
+        }
+      });
+    }
+  }
+
+  update(dt, mx, my) {
+    this._time += dt;
+    this._back.update(dt, mx, my);
+    this._ps.update(dt);
+
+    // 호버 감지 + 자동 미리보기
+    this._hoverId = null;
+    EFFECT_ORDER.forEach((id, i) => {
+      const r = this._cardRect(i);
+      if (mx >= r.x && mx <= r.x+r.w && my >= r.y && my <= r.y+r.h) {
+        this._hoverId = i;
+        this._previewTimer[id] = (this._previewTimer[id] || 0) - dt;
+        if ((this._previewTimer[id] || 0) <= 0) {
+          const [cx, cy] = this._cardCenter(i);
+          this._ps.spawnPreview(cx, cy, id);
+          this._previewTimer[id] = 1.2;
+        }
+      }
+    });
+  }
+
+  draw(ctx) {
+    this._nebula.draw(ctx);
+    this._starfield.draw(ctx);
+
+    // 헤더
+    ctx.fillStyle = 'rgba(5,8,25,0.92)';
+    ctx.fillRect(0, 0, this.sw, 62);
+    drawNeonText(ctx, '✨ 이펙트 테마 선택', this.sw/2, 31, C.gold, 22, true, 5);
+    this._back.draw(ctx);
+
+    // 카드
+    EFFECT_ORDER.forEach((id, i) => {
+      const th  = EFFECT_THEMES[id];
+      const r   = this._cardRect(i);
+      const sel = this._selected === id;
+      const hov = this._hoverId === i;
+      const mainCol = th.colors[0];
+
+      ctx.save();
+      // 카드 배경
+      roundRect(ctx, r.x, r.y, r.w, r.h, 14);
+      if (sel) {
+        // 선택된 카드 — 배경 강조
+        const bg = ctx.createLinearGradient(r.x, r.y, r.x+r.w, r.y+r.h);
+        bg.addColorStop(0, 'rgba(10,20,55,0.97)');
+        bg.addColorStop(1, 'rgba(20,10,40,0.97)');
+        ctx.fillStyle = bg;
+      } else {
+        ctx.fillStyle = hov ? 'rgba(15,22,55,0.92)' : 'rgba(8,12,32,0.82)';
+      }
+      ctx.fill();
+
+      // 테두리
+      ctx.strokeStyle = sel ? mainCol : (hov ? 'rgba(120,140,200,0.7)' : 'rgba(30,45,90,0.6)');
+      ctx.lineWidth   = sel ? 2.5 : (hov ? 1.5 : 1);
+      if (sel || hov) { ctx.shadowColor = mainCol; ctx.shadowBlur = sel ? 14 : 6; }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+
+      // 색상 팔레트 미리보기 (상단)
+      const dotY = r.y + 22;
+      th.colors.slice(0,6).forEach((col, ci) => {
+        const dotX = r.x + 16 + ci * 20;
+        ctx.save();
+        ctx.beginPath(); ctx.arc(dotX, dotY, 7, 0, Math.PI*2);
+        ctx.fillStyle = col;
+        if (sel) { ctx.shadowColor = col; ctx.shadowBlur = 8; }
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        // 외곽선
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // 테마 이름
+      drawNeonText(ctx, th.name, r.x + r.w/2, r.y + 54, sel ? mainCol : 'rgba(200,220,255,0.9)',
+        15, true, sel ? 4 : 1);
+
+      // 설명
+      drawText(ctx, th.desc, r.x + r.w/2, r.y + 78, 'rgba(140,160,200,0.75)', 11);
+
+      // 선택 표시
+      if (sel) {
+        ctx.save();
+        roundRect(ctx, r.x + r.w/2 - 36, r.y + r.h - 28, 72, 22, 10);
+        ctx.fillStyle = mainCol + '33'; ctx.fill();
+        ctx.strokeStyle = mainCol; ctx.lineWidth = 1.5;
+        ctx.shadowColor = mainCol; ctx.shadowBlur = 6;
+        ctx.stroke(); ctx.shadowBlur = 0;
+        drawNeonText(ctx, '✔ 선택됨', r.x + r.w/2, r.y + r.h - 17, mainCol, 12, true, 3);
+        ctx.restore();
+      } else {
+        drawText(ctx, '탭하여 선택', r.x + r.w/2, r.y + r.h - 17, 'rgba(100,130,180,0.45)', 11);
+      }
+    });
+
+    // 파티클
+    this._ps.draw(ctx);
+
+    // 하단 힌트
+    const th = getCurrentTheme();
+    ctx.save();
+    ctx.font = font(13);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(160,200,255,0.5)';
+    ctx.fillText(`현재: ${th.name} — ${th.desc}`, this.sw/2, this.sh - 22);
     ctx.restore();
   }
 }
