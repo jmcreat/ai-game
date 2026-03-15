@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Walk Free</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        background: #111;
+        overflow: hidden;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+      }
+
+      #renderCanvas {
+        width: 100vw;
+        height: 100vh;
+        display: block;
+        touch-action: none;
+      }
+
+      /* ── Map Selector ─────────────────────────────────────── */
+      #map-selector {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .ms-backdrop {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at center, #1a2a4a 0%, #0a0a1a 100%);
+      }
+
+      .ms-container {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        padding: 2rem;
+        max-width: 900px;
+        width: 100%;
+      }
+
+      .ms-title {
+        font-size: 3.5rem;
+        font-weight: 800;
+        color: #ffffff;
+        letter-spacing: 0.08em;
+        text-shadow: 0 0 40px rgba(140, 200, 255, 0.7);
+        margin-bottom: 0.4rem;
+      }
+
+      .ms-subtitle {
+        font-size: 1.1rem;
+        color: #8ab4d4;
+        margin-bottom: 2.5rem;
+        letter-spacing: 0.05em;
+      }
+
+      .ms-cards {
+        display: flex;
+        gap: 1.5rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 2rem;
+      }
+
+      .ms-card {
+        width: 220px;
+        border-radius: 16px;
+        padding: 2rem 1.5rem;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border: 2px solid rgba(255,255,255,0.15);
+        user-select: none;
+      }
+
+      .ms-card.available:hover {
+        transform: translateY(-6px) scale(1.03);
+        box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+        border-color: rgba(255,255,255,0.5);
+      }
+
+      .ms-card.locked {
+        opacity: 0.45;
+        cursor: not-allowed;
+        filter: grayscale(0.4);
+      }
+
+      .ms-card-emoji {
+        font-size: 3rem;
+        margin-bottom: 0.7rem;
+      }
+
+      .ms-card-name {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #1a2a3a;
+        margin-bottom: 0.5rem;
+      }
+
+      .ms-card-desc {
+        font-size: 0.82rem;
+        color: #2a3a4a;
+        line-height: 1.4;
+        margin-bottom: 1rem;
+      }
+
+      .ms-play {
+        display: inline-block;
+        background: rgba(255,255,255,0.85);
+        color: #1a2a3a;
+        font-weight: 700;
+        font-size: 0.9rem;
+        padding: 0.4rem 1.2rem;
+        border-radius: 20px;
+        letter-spacing: 0.05em;
+      }
+
+      .ms-lock {
+        font-size: 0.85rem;
+        color: #2a3a4a;
+        font-weight: 600;
+      }
+
+      .ms-hint {
+        color: #4a6a8a;
+        font-size: 0.85rem;
+        letter-spacing: 0.04em;
+      }
+
+      /* ── HUD ──────────────────────────────────────────────── */
+      #hud {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 50;
+      }
+
+      .hud-crosshair {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.6rem;
+        color: rgba(255,255,255,0.7);
+        text-shadow: 0 0 6px rgba(0,0,0,0.8);
+        line-height: 1;
+      }
+
+      .hud-hint {
+        position: absolute;
+        bottom: 1.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.45);
+        color: rgba(255,255,255,0.8);
+        padding: 0.4rem 1.2rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        letter-spacing: 0.04em;
+        backdrop-filter: blur(4px);
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="renderCanvas"></canvas>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
