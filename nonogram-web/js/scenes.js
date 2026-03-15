@@ -428,14 +428,6 @@ class GameScene extends Scene {
           this._grid.glowCell(row, col);
         }
         this._handleLineClears(result, row, col);
-
-        // 이미 완성된 행/열인데 아직 자동 X 안 된 칸이 있으면 채움
-        if (!result.rowCleared && this._puzzle.completedRows[row]) {
-          this._autoMarkRow(row);
-        }
-        if (!result.colCleared && this._puzzle.completedCols[col]) {
-          this._autoMarkCol(col);
-        }
       }
     } else if (this._dragAction === 'erase_fill') {
       if (before === CELL.FILLED) { this._puzzle.grid[row][col] = CELL.EMPTY; after = CELL.EMPTY; }
@@ -454,6 +446,9 @@ class GameScene extends Scene {
     if (before !== after) {
       this._undoStack.push({ row, col, before, after });
       if (this._undoStack.length > 200) this._undoStack.shift();
+      // 셀이 바뀔 때마다 해당 행/열이 완성 상태면 빈 칸 자동 X
+      if (this._puzzle.completedRows[row]) this._autoMarkRow(row);
+      if (this._puzzle.completedCols[col]) this._autoMarkCol(col);
     }
     if (this._puzzle.isSolved) this._onSolved();
   }
