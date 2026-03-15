@@ -89,9 +89,10 @@ class ParticleSystem {
   draw(ctx) {
     for (const p of this._p) {
       const a = p.ratio;
-      ctx.globalAlpha = a;
       const sz = Math.max(1, p.size * (0.3 + 0.7 * a));
-
+      // 모든 그리기는 save/restore 안에서 수행 — globalAlpha 누수 방지
+      ctx.save();
+      ctx.globalAlpha = a;
       switch (p.kind) {
         case 'spark':    this._drawSpark(ctx, p, sz); break;
         case 'star':     this._drawStarShape(ctx, p, sz); break;
@@ -104,7 +105,9 @@ class ParticleSystem {
           ctx.beginPath(); ctx.arc(p.x, p.y, sz, 0, Math.PI*2); ctx.fill();
           break;
       }
+      ctx.restore();
     }
+    // 보험용 — 루프 후 항상 초기화
     ctx.globalAlpha = 1;
   }
 
@@ -112,7 +115,7 @@ class ParticleSystem {
     ctx.fillStyle = p.color;
     ctx.beginPath(); ctx.arc(p.x, p.y, sz, 0, Math.PI*2); ctx.fill();
     if (sz > 2) {
-      ctx.globalAlpha = p.ratio * 0.4;
+      ctx.globalAlpha *= 0.4;  // 외부 save로 보호되므로 상대적으로 줄임
       ctx.beginPath(); ctx.arc(p.x, p.y, sz * 2, 0, Math.PI*2); ctx.fill();
     }
   }
@@ -161,13 +164,11 @@ class ParticleSystem {
   }
 
   _drawElectric(ctx, p, sz) {
-    ctx.save();
     ctx.strokeStyle = p.color;
     ctx.lineWidth = Math.max(1, sz * 0.3);
     ctx.shadowColor = p.color;
     ctx.shadowBlur = sz * 4;
-    ctx.globalAlpha = p.ratio * (0.6 + 0.4 * Math.sin(p.life * 30));
-    // 지그재그 번개
+    ctx.globalAlpha *= (0.6 + 0.4 * Math.sin(p.life * 30));
     const len = sz * 2;
     ctx.beginPath();
     ctx.moveTo(p.x, p.y);
@@ -178,7 +179,6 @@ class ParticleSystem {
     }
     ctx.stroke();
     ctx.shadowBlur = 0;
-    ctx.restore();
   }
 
   _drawPetal(ctx, p, sz) {
@@ -186,8 +186,7 @@ class ParticleSystem {
     ctx.translate(p.x, p.y);
     ctx.rotate(p.angle);
     ctx.fillStyle = p.color;
-    ctx.globalAlpha = p.ratio * 0.85;
-    // 꽃잎 타원
+    ctx.globalAlpha *= 0.85;
     ctx.beginPath();
     ctx.ellipse(0, 0, sz * 0.5, sz, 0, 0, Math.PI * 2);
     ctx.fill();
