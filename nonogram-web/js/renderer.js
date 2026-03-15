@@ -689,6 +689,7 @@ class GridRenderer {
       ctx.restore();
     }
   }
+}
 
 // ── HUD (상단 56px: 타이틀/타이머/오류, 56~108px: 버튼 행) ─────────────────
 class HUD {
