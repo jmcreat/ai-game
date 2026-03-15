@@ -473,6 +473,16 @@ class GameScene extends Scene {
     }
   }
 
+  // 완성된 행/열 전체 sweep — 빈 칸 남아있으면 X로 채움
+  _sweepAutoMark() {
+    for (let r = 0; r < this._puzzle.rows; r++) {
+      if (this._puzzle.completedRows[r]) this._autoMarkRow(r);
+    }
+    for (let c = 0; c < this._puzzle.cols; c++) {
+      if (this._puzzle.completedCols[c]) this._autoMarkCol(c);
+    }
+  }
+
   // 완성된 행에서 FILLED 아닌 칸을 모두 X로 채움
   _autoMarkRow(row) {
     for (let c = 0; c < this._puzzle.cols; c++) {
@@ -572,10 +582,10 @@ class GameScene extends Scene {
     this._grid.update(dt);
     this._grid.setHover(this._grid.getCellAt(mx, my, this._puzzle));
     // 드래그 중이거나 호버 중인 셀을 활성 행/열로 설정
-    const activeCell = this._dragging
-      ? this._grid.getCellAt(mx, my, this._puzzle)
-      : this._grid.getCellAt(mx, my, this._puzzle);
+    const activeCell = this._grid.getCellAt(mx, my, this._puzzle);
     this._grid.setActiveCell(activeCell);
+    // 완성된 행/열에 빈 칸이 남아있으면 즉시 X로 채움 (매 프레임 sweep)
+    this._sweepAutoMark();
     this._btnMenu.update(dt, mx, my);
     this._btnUndo.update(dt, mx, my);
     this._btnHint.update(dt, mx, my);
