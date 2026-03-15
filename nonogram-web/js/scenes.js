@@ -453,12 +453,42 @@ class GameScene extends Scene {
       const gx = this._grid.gridX, gy = this._grid.gridY, cs = this._grid.cellSize;
       this._ps.spawnLineClear(gx, gy+row*cs+cs/2, gx+this._puzzle.cols*cs, gy+row*cs+cs/2, true);
       this._grid.flashRow(row);
+      // 완성된 행의 빈 칸 자동 X
+      this._autoMarkRow(row);
     }
     if (result.colCleared) {
       const gx = this._grid.gridX, gy = this._grid.gridY, cs = this._grid.cellSize;
       this._ps.spawnLineClear(gx+col*cs+cs/2, gy, gx+col*cs+cs/2, gy+this._puzzle.rows*cs, false);
       this._grid.flashCol(col);
+      // 완성된 열의 빈 칸 자동 X
+      this._autoMarkCol(col);
     }
+  }
+
+  // 완성된 행에서 FILLED 아닌 칸을 모두 X로 채움
+  _autoMarkRow(row) {
+    for (let c = 0; c < this._puzzle.cols; c++) {
+      const cur = this._puzzle.grid[row][c];
+      if (cur === CELL.EMPTY || cur === CELL.MEMO) {
+        const before = cur;
+        this._puzzle.grid[row][c] = CELL.MARKED;
+        this._undoStack.push({ row, col: c, before, after: CELL.MARKED });
+      }
+    }
+    if (this._undoStack.length > 300) this._undoStack.splice(0, this._undoStack.length - 300);
+  }
+
+  // 완성된 열에서 FILLED 아닌 칸을 모두 X로 채움
+  _autoMarkCol(col) {
+    for (let r = 0; r < this._puzzle.rows; r++) {
+      const cur = this._puzzle.grid[r][col];
+      if (cur === CELL.EMPTY || cur === CELL.MEMO) {
+        const before = cur;
+        this._puzzle.grid[r][col] = CELL.MARKED;
+        this._undoStack.push({ row: r, col, before, after: CELL.MARKED });
+      }
+    }
+    if (this._undoStack.length > 300) this._undoStack.splice(0, this._undoStack.length - 300);
   }
 
   _undo() {

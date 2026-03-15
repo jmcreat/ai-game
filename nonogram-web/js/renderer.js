@@ -14,7 +14,7 @@ const C = {
   hintNormal:   '#b4c8f0',
   hintDone:     '#50c878',
   hintBg:       'rgba(5,8,25,0.97)',
-  rowDone:      'rgba(20,60,30,0.5)',
+  rowDone:      'rgba(20,80,35,0.75)',
   gold:         '#ffd23c',
   neonBlue:     '#50b4ff',
   neonPurple:   '#b450ff',
