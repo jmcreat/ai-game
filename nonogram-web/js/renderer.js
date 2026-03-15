@@ -316,12 +316,41 @@ class GridRenderer {
           ctx.fillRect(x, y, cs, cs);
         }
 
-        // 셀 테두리
-        ctx.strokeStyle = (r%5===4 || c%5===4) ? C.grid5Line : C.gridLine;
-        ctx.lineWidth = 0.5;
-        ctx.strokeRect(x+0.5, y+0.5, cs-1, cs-1);
       }
     }
+
+    // ── 격자선 (셀 채우기 위에 일관되게 선으로만 그림) ──
+    // 얇은 기본선
+    ctx.strokeStyle = C.gridLine;
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    for (let r = 0; r <= puzzle.rows; r++) {
+      const ly = gy + r * cs;
+      ctx.moveTo(gx, ly);
+      ctx.lineTo(gx + puzzle.cols * cs, ly);
+    }
+    for (let c = 0; c <= puzzle.cols; c++) {
+      const lx = gx + c * cs;
+      ctx.moveTo(lx, gy);
+      ctx.lineTo(lx, gy + puzzle.rows * cs);
+    }
+    ctx.stroke();
+
+    // 5칸마다 굵은 구분선
+    ctx.strokeStyle = C.grid5Line;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let r = 0; r <= puzzle.rows; r += 5) {
+      const ly = gy + r * cs;
+      ctx.moveTo(gx, ly);
+      ctx.lineTo(gx + puzzle.cols * cs, ly);
+    }
+    for (let c = 0; c <= puzzle.cols; c += 5) {
+      const lx = gx + c * cs;
+      ctx.moveTo(lx, gy);
+      ctx.lineTo(lx, gy + puzzle.rows * cs);
+    }
+    ctx.stroke();
 
     // ── 힌트 텍스트 (클리핑으로 그리드 영역 침범 방지) ──
     ctx.textBaseline = 'middle';
@@ -362,18 +391,6 @@ class GridRenderer {
       });
     }
     ctx.restore();
-
-    // ── 5칸 구분선 ──
-    ctx.strokeStyle = C.grid5Line;
-    ctx.lineWidth = 1.5;
-    for (let r = 0; r <= puzzle.rows; r += 5) {
-      const y = gy + r*cs;
-      ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx + puzzle.cols*cs, y); ctx.stroke();
-    }
-    for (let c = 0; c <= puzzle.cols; c += 5) {
-      const x = gx + c*cs;
-      ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x, gy + puzzle.rows*cs); ctx.stroke();
-    }
 
     // ── 외곽선 ──
     ctx.save();
