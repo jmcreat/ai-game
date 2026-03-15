@@ -1,6 +1,10 @@
 // puzzle.js - 노노그램 퍼즐 로직
 
-const CELL = { EMPTY: 0, FILLED: 1, MARKED: 2 };
+// EMPTY  = 빈 칸
+// FILLED = 채운 칸 (연필)
+// MARKED = X 표시  (절대 아닌 칸)
+// MEMO   = 메모 ▲  (후보 칸, 정답 체크 무관)
+const CELL = { EMPTY: 0, FILLED: 1, MARKED: 2, MEMO: 3 };
 
 class Puzzle {
   constructor(solution, title = '', seed = null) {

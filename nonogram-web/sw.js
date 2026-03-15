@@ -1,6 +1,6 @@
 // sw.js - Service Worker (오프라인 캐싱 + PWA)
 
-const CACHE_NAME = 'nonogram-galaxy-v1';
+const CACHE_NAME = 'nonogram-galaxy-v2';
 
 const PRECACHE = [
   '/',

@@ -243,31 +243,68 @@ class GridRenderer {
         const isHover = this._hover && this._hover[0]===r && this._hover[1]===c;
 
         if (state === CELL.FILLED) {
-          const grad = ctx.createLinearGradient(x, y, x, y+cs);
+          // ── 채운 칸: 강한 그라디언트 + 글로우 ──
+          ctx.save();
+          const grad = ctx.createLinearGradient(x, y, x+cs, y+cs);
           grad.addColorStop(0, C.cellFilled2);
           grad.addColorStop(1, C.cellFilled);
           ctx.fillStyle = grad;
           ctx.fillRect(x, y, cs, cs);
-          ctx.fillStyle = 'rgba(255,255,255,0.18)';
-          ctx.fillRect(x+2, y+2, cs-8, 3);
+          // 상단 하이라이트
+          ctx.fillStyle = 'rgba(255,255,255,0.22)';
+          ctx.fillRect(x+2, y+2, cs-6, Math.max(2, cs*0.15));
+          // 항상 은은한 글로우
+          ctx.shadowColor = C.neonBlue;
+          ctx.shadowBlur = 8;
+          ctx.strokeStyle = 'rgba(100,200,255,0.35)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x+1, y+1, cs-2, cs-2);
+          ctx.shadowBlur = 0;
+          // 방금 채운 칸 강한 글로우
           if (glow > 0) {
-            ctx.save();
             ctx.shadowColor = C.neonBlue;
-            ctx.shadowBlur = 16 * (glow/0.6);
-            ctx.fillStyle = `rgba(100,200,255,${glow/0.6*0.3})`;
-            ctx.fillRect(x-3, y-3, cs+6, cs+6);
-            ctx.restore();
+            ctx.shadowBlur = 24 * (glow/0.6);
+            ctx.fillStyle = `rgba(80,180,255,${glow/0.6*0.45})`;
+            ctx.fillRect(x-4, y-4, cs+8, cs+8);
+            ctx.shadowBlur = 0;
           }
+          ctx.restore();
+
         } else if (state === CELL.MARKED) {
-          ctx.fillStyle = C.cellMarked;
+          // ── X 표시 ──
+          ctx.save();
+          ctx.fillStyle = 'rgba(40,10,20,0.85)';
           ctx.fillRect(x, y, cs, cs);
           const m = cs * 0.22;
-          ctx.strokeStyle = 'rgba(255,100,150,0.85)';
-          ctx.lineWidth = Math.max(1.5, cs * 0.12);
+          ctx.strokeStyle = 'rgba(255,80,120,0.9)';
+          ctx.lineWidth = Math.max(1.5, cs * 0.13);
+          ctx.lineCap = 'round';
           ctx.beginPath();
-          ctx.moveTo(x+m, y+m); ctx.lineTo(x+cs-m, y+cs-m);
-          ctx.moveTo(x+cs-m, y+m); ctx.lineTo(x+m, y+cs-m);
+          ctx.moveTo(x+m, y+m);     ctx.lineTo(x+cs-m, y+cs-m);
+          ctx.moveTo(x+cs-m, y+m);  ctx.lineTo(x+m, y+cs-m);
           ctx.stroke();
+          ctx.restore();
+
+        } else if (state === CELL.MEMO) {
+          // ── 메모 ▲ (후보 칸) ──
+          ctx.save();
+          ctx.fillStyle = 'rgba(10,20,50,0.75)';
+          ctx.fillRect(x, y, cs, cs);
+          // 삼각형 ▲
+          const triSize = cs * 0.52;
+          const tx = x + cs/2;
+          const ty = y + cs/2 + triSize*0.18;
+          ctx.beginPath();
+          ctx.moveTo(tx,                     ty - triSize*0.62);
+          ctx.lineTo(tx + triSize*0.55,      ty + triSize*0.38);
+          ctx.lineTo(tx - triSize*0.55,      ty + triSize*0.38);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(80,200,255,0.82)';
+          ctx.shadowColor = '#50c8ff';
+          ctx.shadowBlur = 6;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.restore();
         } else {
           ctx.fillStyle = isHover ? C.cellHover : C.cellEmpty;
           ctx.fillRect(x, y, cs, cs);

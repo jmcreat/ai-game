@@ -315,15 +315,15 @@ class GameScene extends Scene {
     this._btnHint  = new NeonButton(sw-160,  TOP, 74, bh, '💡 힌트', C.gold, 13);
     this._btnReset = new NeonButton(sw-82,   TOP, 74, bh, '↺ 초기화', 'rgba(180,120,120,0.9)', 12);
 
-    // ── 하단 3버튼 (X / 채우기 / 메모) ──
+    // ── 하단 3버튼 (X / 연필 / 메모) ──
     const BOT_Y  = sh - 58;
     const BTN_W  = Math.min(110, (sw - 32) / 3);
     const BTN_H  = 44;
     const cx3    = sw / 2;
     this._modeButtons = [
       { id:'mark', label:'✕  X표시',  x: cx3 - BTN_W*1.5 - 6, y: BOT_Y, w: BTN_W, h: BTN_H, color: C.neonPink },
-      { id:'fill', label:'■  채우기',  x: cx3 - BTN_W/2,       y: BOT_Y, w: BTN_W, h: BTN_H, color: C.neonBlue },
-      { id:'memo', label:'✎  메모',    x: cx3 + BTN_W/2 + 6,   y: BOT_Y, w: BTN_W, h: BTN_H, color: C.neonCyan },
+      { id:'fill', label:'✏  연필',   x: cx3 - BTN_W/2,        y: BOT_Y, w: BTN_W, h: BTN_H, color: C.neonBlue },
+      { id:'memo', label:'▲  메모',   x: cx3 + BTN_W/2 + 6,    y: BOT_Y, w: BTN_W, h: BTN_H, color: C.neonCyan },
     ];
     this._modeBtnHover = [0, 0, 0];
 
@@ -354,19 +354,28 @@ class GameScene extends Scene {
     if (this._clearOverlay || this._failOverlay) return;
 
     if (e.type === 'mousedown' || e.type === 'touchstart') {
-      const {x, y, button} = getPoint(e);
+      const {x, y} = getPoint(e);
       if (this._isUI(x, y)) return;
       const cell = this._grid.getCellAt(x, y, this._puzzle);
       if (cell) {
         this._dragging = true;
         this._touchedCells = new Set();
-        // 마우스 우클릭은 항상 X
-        const mode = (button === 2) ? 'mark' : this._mode;
-        const cur  = this._puzzle.grid[cell[0]][cell[1]];
+
+        // ── 모드 결정: 마우스 우클릭은 항상 X, 터치/좌클릭은 현재 모드 ──
+        // e.button: 0=왼쪽, 2=오른쪽 (터치는 undefined → 0으로 처리)
+        const isRightClick = (e.button === 2);
+        const mode = isRightClick ? 'mark' : this._mode;
+
+        const cur = this._puzzle.grid[cell[0]][cell[1]];
         if (mode === 'fill') {
+          // 연필: 비어있거나 메모/X면 채우기, 이미 채워져 있으면 지우기
           this._dragAction = (cur === CELL.FILLED) ? 'erase_fill' : 'fill';
-        } else if (mode === 'mark' || mode === 'memo') {
+        } else if (mode === 'mark') {
+          // X: X가 없으면 X 찍기, 이미 X면 지우기
           this._dragAction = (cur === CELL.MARKED) ? 'erase_mark' : 'mark';
+        } else if (mode === 'memo') {
+          // 메모: 메모가 없으면 메모 찍기, 이미 메모면 지우기
+          this._dragAction = (cur === CELL.MEMO) ? 'erase_memo' : 'memo';
         }
         this._applyCell(cell[0], cell[1]);
       }
@@ -400,6 +409,7 @@ class GameScene extends Scene {
     let after = before;
 
     if (this._dragAction === 'fill') {
+      // 채워진 칸이 아닌 경우에만 채우기 (메모/X 위에도 덮어씌움)
       if (before !== CELL.FILLED) {
         const result = this._puzzle.toggleCell(row, col, true);
         after = this._puzzle.grid[row][col];
@@ -418,9 +428,15 @@ class GameScene extends Scene {
     } else if (this._dragAction === 'erase_fill') {
       if (before === CELL.FILLED) { this._puzzle.grid[row][col] = CELL.EMPTY; after = CELL.EMPTY; }
     } else if (this._dragAction === 'mark') {
-      if (before === CELL.EMPTY)  { this._puzzle.grid[row][col] = CELL.MARKED; after = CELL.MARKED; }
+      // X: EMPTY 또는 MEMO 위에 찍기 (FILLED 위에는 찍지 않음)
+      if (before !== CELL.FILLED) { this._puzzle.grid[row][col] = CELL.MARKED; after = CELL.MARKED; }
     } else if (this._dragAction === 'erase_mark') {
-      if (before === CELL.MARKED) { this._puzzle.grid[row][col] = CELL.EMPTY;  after = CELL.EMPTY; }
+      if (before === CELL.MARKED) { this._puzzle.grid[row][col] = CELL.EMPTY; after = CELL.EMPTY; }
+    } else if (this._dragAction === 'memo') {
+      // 메모: EMPTY 또는 MARKED 위에 찍기 (FILLED 위에는 찍지 않음)
+      if (before !== CELL.FILLED) { this._puzzle.grid[row][col] = CELL.MEMO; after = CELL.MEMO; }
+    } else if (this._dragAction === 'erase_memo') {
+      if (before === CELL.MEMO) { this._puzzle.grid[row][col] = CELL.EMPTY; after = CELL.EMPTY; }
     }
 
     if (before !== after) {
