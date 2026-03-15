@@ -4,9 +4,9 @@ const C = {
   bg:           '#05051a',
   panel:        'rgba(10,15,40,0.85)',
   panelBorder:  'rgba(40,60,120,0.8)',
-  gridLine:     'rgba(30,40,80,0.9)',
-  grid5Line:    'rgba(60,80,140,0.9)',
-  cellEmpty:    '#0c1028',
+  gridLine:     'rgba(50,70,130,0.95)',
+  grid5Line:    'rgba(90,120,200,1.0)',
+  cellEmpty:    '#0e1530',
   cellHover:    '#141e46',
   cellFilled:   '#3ca0ff',
   cellFilled2:  '#64c8ff',
@@ -277,13 +277,18 @@ class GridRenderer {
           ctx.restore();
 
         } else if (state === CELL.MARKED) {
-          // ── X 표시 ──
+          // ── X 표시 (채우기와 동일한 파란 계열) ──
           ctx.save();
-          ctx.fillStyle = 'rgba(40,10,20,0.85)';
+          const grad = ctx.createLinearGradient(x, y, x+cs, y+cs);
+          grad.addColorStop(0, C.cellFilled2);
+          grad.addColorStop(1, C.cellFilled);
+          ctx.fillStyle = grad;
           ctx.fillRect(x, y, cs, cs);
+          ctx.fillStyle = 'rgba(255,255,255,0.18)';
+          ctx.fillRect(x+2, y+2, cs-6, Math.max(2, cs*0.15));
           const m = cs * 0.22;
-          ctx.strokeStyle = 'rgba(255,80,120,0.9)';
-          ctx.lineWidth = Math.max(1.5, cs * 0.13);
+          ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+          ctx.lineWidth = Math.max(2, cs * 0.15);
           ctx.lineCap = 'round';
           ctx.beginPath();
           ctx.moveTo(x+m, y+m);     ctx.lineTo(x+cs-m, y+cs-m);
