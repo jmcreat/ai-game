@@ -259,6 +259,20 @@ class GridRenderer {
     this._rowFlash = {};
     this._colFlash = {};
     this._hover = null;
+    this._activeRow = -1;  // 현재 터치/드래그 중인 행
+    this._activeCol = -1;  // 현재 터치/드래그 중인 열
+    this._counterAnim = {}; // 'r{r}' / 'c{c}' → 애니 타이머
+  }
+
+  setActiveCell(cell) {
+    const row = cell ? cell[0] : -1;
+    const col = cell ? cell[1] : -1;
+    if (row !== this._activeRow || col !== this._activeCol) {
+      if (row >= 0) this._counterAnim[`r${row}`] = 0.35;
+      if (col >= 0) this._counterAnim[`c${col}`] = 0.35;
+    }
+    this._activeRow = row;
+    this._activeCol = col;
   }
 
   // 게임 씬용 레이아웃 — 상단/하단 UI 영역을 명시적으로 비워줌
@@ -309,6 +323,7 @@ class GridRenderer {
     for (const k in this._cellGlow) { this._cellGlow[k] -= dt; if (this._cellGlow[k] <= 0) delete this._cellGlow[k]; }
     for (const k in this._rowFlash) { this._rowFlash[k] -= dt; if (this._rowFlash[k] <= 0) delete this._rowFlash[k]; }
     for (const k in this._colFlash) { this._colFlash[k] -= dt; if (this._colFlash[k] <= 0) delete this._colFlash[k]; }
+    for (const k in this._counterAnim) { this._counterAnim[k] -= dt; if (this._counterAnim[k] <= 0) delete this._counterAnim[k]; }
   }
 
   getCellAt(px, py, puzzle) {
@@ -347,6 +362,22 @@ class GridRenderer {
     ctx.fillStyle = C.hintBg;
     ctx.fillRect(gx - this.hintColW, gy - this.hintRowH, this.hintColW, this.hintRowH);
     ctx.restore();
+
+    // ── 활성 행/열 하이라이트 (터치/드래그 중) ──
+    if (this._activeRow >= 0 && this._activeRow < puzzle.rows) {
+      ctx.fillStyle = 'rgba(100,180,255,0.12)';
+      ctx.fillRect(gx - this.hintColW, gy + this._activeRow*cs, this.hintColW + puzzle.cols*cs, cs);
+      ctx.strokeStyle = 'rgba(100,180,255,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(gx, gy + this._activeRow*cs, puzzle.cols*cs, cs);
+    }
+    if (this._activeCol >= 0 && this._activeCol < puzzle.cols) {
+      ctx.fillStyle = 'rgba(100,180,255,0.12)';
+      ctx.fillRect(gx + this._activeCol*cs, gy - this.hintRowH, cs, this.hintRowH + puzzle.rows*cs);
+      ctx.strokeStyle = 'rgba(100,180,255,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(gx + this._activeCol*cs, gy, cs, puzzle.rows*cs);
+    }
 
     // ── 완성 행/열 배경 ──
     for (let r = 0; r < puzzle.rows; r++) {
@@ -585,46 +616,74 @@ class GridRenderer {
 
   // 각 행/열에 현재 채워진 블록 수를 힌트 옆에 작게 표시
   _drawBlockCounters(ctx, puzzle, gx, gy, cs) {
-    const fs = Math.max(8, Math.min(cs - 6, 13));
-    ctx.font = font(fs, true);
+    const fs = Math.max(8, Math.min(cs - 4, 14));
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
 
     // ── 행: 그리드 오른쪽 바깥에 표시 ──
-    const ROW_X = gx + puzzle.cols * cs + Math.max(10, cs * 0.5);
+    const ROW_X = gx + puzzle.cols * cs + Math.max(12, cs * 0.6);
     for (let r = 0; r < puzzle.rows; r++) {
-      if (puzzle.completedRows[r]) continue;
-      const line = puzzle.grid[r].map(c => c === CELL.FILLED ? 1 : 0);
+      const line   = puzzle.grid[r].map(c => c === CELL.FILLED ? 1 : 0);
       const filled = line.reduce((a, v) => a + v, 0);
       const total  = puzzle.rowHints[r].reduce((a, v) => a + v, 0);
       if (filled === 0) continue;
-      const hy = gy + r * cs + cs / 2;
-      const ratio = filled / total;
-      const col = ratio >= 1 ? '#80ffaa' : ratio >= 0.6 ? C.gold : C.neonBlue;
+
+      const hy     = gy + r * cs + cs / 2;
+      const done   = puzzle.completedRows[r];
+      const active = this._activeRow === r;
+      const anim   = this._counterAnim[`r${r}`] || 0;
+      const ratio  = filled / total;
+
+      let col = done ? C.hintDone : ratio >= 1 ? '#80ffaa' : active ? '#ffffff' : ratio >= 0.5 ? C.gold : C.neonBlue;
+      const scale = 1 + (anim / 0.35) * 0.4; // 새 칸 채울 때 팝업 효과
+
       ctx.save();
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = done ? 0.5 : 0.92;
+      ctx.font = font(Math.round(fs * scale), true);
+
+      if (active || anim > 0) {
+        // 배경 pill
+        const tw = ctx.measureText(`${filled}`).width + 10;
+        roundRect(ctx, ROW_X - tw/2, hy - fs*0.75, tw, fs*1.5, 4);
+        ctx.fillStyle = done ? 'rgba(50,120,60,0.7)' : ratio >= 1 ? 'rgba(40,120,60,0.8)' : 'rgba(20,50,100,0.8)';
+        ctx.fill();
+      }
       ctx.fillStyle = col;
-      ctx.shadowColor = col; ctx.shadowBlur = 4;
+      if (active) { ctx.shadowColor = col; ctx.shadowBlur = 8; }
       ctx.fillText(`${filled}`, ROW_X, hy);
       ctx.shadowBlur = 0;
       ctx.restore();
     }
 
     // ── 열: 그리드 아래쪽 바깥에 표시 ──
-    const COL_Y = gy + puzzle.rows * cs + Math.max(10, cs * 0.5);
+    const COL_Y = gy + puzzle.rows * cs + Math.max(12, cs * 0.6);
     for (let c = 0; c < puzzle.cols; c++) {
-      if (puzzle.completedCols[c]) continue;
-      const line = puzzle.grid.map(row => row[c] === CELL.FILLED ? 1 : 0);
+      const line   = puzzle.grid.map(row => row[c] === CELL.FILLED ? 1 : 0);
       const filled = line.reduce((a, v) => a + v, 0);
       const total  = puzzle.colHints[c].reduce((a, v) => a + v, 0);
       if (filled === 0) continue;
-      const hx = gx + c * cs + cs / 2;
-      const ratio = filled / total;
-      const col = ratio >= 1 ? '#80ffaa' : ratio >= 0.6 ? C.gold : C.neonBlue;
+
+      const hx     = gx + c * cs + cs / 2;
+      const done   = puzzle.completedCols[c];
+      const active = this._activeCol === c;
+      const anim   = this._counterAnim[`c${c}`] || 0;
+      const ratio  = filled / total;
+
+      let col = done ? C.hintDone : ratio >= 1 ? '#80ffaa' : active ? '#ffffff' : ratio >= 0.5 ? C.gold : C.neonBlue;
+      const scale = 1 + (anim / 0.35) * 0.4;
+
       ctx.save();
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = done ? 0.5 : 0.92;
+      ctx.font = font(Math.round(fs * scale), true);
+
+      if (active || anim > 0) {
+        const tw = ctx.measureText(`${filled}`).width + 10;
+        roundRect(ctx, hx - tw/2, COL_Y - fs*0.75, tw, fs*1.5, 4);
+        ctx.fillStyle = done ? 'rgba(50,120,60,0.7)' : ratio >= 1 ? 'rgba(40,120,60,0.8)' : 'rgba(20,50,100,0.8)';
+        ctx.fill();
+      }
       ctx.fillStyle = col;
-      ctx.shadowColor = col; ctx.shadowBlur = 4;
+      if (active) { ctx.shadowColor = col; ctx.shadowBlur = 8; }
       ctx.fillText(`${filled}`, hx, COL_Y);
       ctx.shadowBlur = 0;
       ctx.restore();

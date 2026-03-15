@@ -446,6 +446,9 @@ class GameScene extends Scene {
     if (before !== after) {
       this._undoStack.push({ row, col, before, after });
       if (this._undoStack.length > 200) this._undoStack.shift();
+      // 카운터 팝업 애니메이션 트리거
+      this._grid._counterAnim[`r${row}`] = 0.35;
+      this._grid._counterAnim[`c${col}`] = 0.35;
       // 셀이 바뀔 때마다 해당 행/열이 완성 상태면 빈 칸 자동 X
       if (this._puzzle.completedRows[row]) this._autoMarkRow(row);
       if (this._puzzle.completedCols[col]) this._autoMarkCol(col);
@@ -568,6 +571,11 @@ class GameScene extends Scene {
     this._ps.update(dt);
     this._grid.update(dt);
     this._grid.setHover(this._grid.getCellAt(mx, my, this._puzzle));
+    // 드래그 중이거나 호버 중인 셀을 활성 행/열로 설정
+    const activeCell = this._dragging
+      ? this._grid.getCellAt(mx, my, this._puzzle)
+      : this._grid.getCellAt(mx, my, this._puzzle);
+    this._grid.setActiveCell(activeCell);
     this._btnMenu.update(dt, mx, my);
     this._btnUndo.update(dt, mx, my);
     this._btnHint.update(dt, mx, my);
