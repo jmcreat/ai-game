@@ -371,10 +371,12 @@ class GameScene extends Scene {
           // 연필: 비어있거나 메모/X면 채우기, 이미 채워져 있으면 지우기
           this._dragAction = (cur === CELL.FILLED) ? 'erase_fill' : 'fill';
         } else if (mode === 'mark') {
-          // X: X가 없으면 X 찍기, 이미 X면 지우기
+          // X: FILLED 위에서는 아무것도 하지 않음
+          if (cur === CELL.FILLED) { this._dragging = false; return; }
           this._dragAction = (cur === CELL.MARKED) ? 'erase_mark' : 'mark';
         } else if (mode === 'memo') {
-          // 메모: 메모가 없으면 메모 찍기, 이미 메모면 지우기
+          // 메모: FILLED 위에서는 아무것도 하지 않음
+          if (cur === CELL.FILLED) { this._dragging = false; return; }
           this._dragAction = (cur === CELL.MEMO) ? 'erase_memo' : 'memo';
         }
         this._applyCell(cell[0], cell[1]);

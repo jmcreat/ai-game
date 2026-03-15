@@ -13,7 +13,7 @@ const C = {
   cellMarked:   '#3c3c5a',
   hintNormal:   '#b4c8f0',
   hintDone:     '#50c878',
-  hintBg:       'rgba(8,12,32,0.9)',
+  hintBg:       'rgba(5,8,25,0.97)',
   rowDone:      'rgba(20,60,30,0.5)',
   gold:         '#ffd23c',
   neonBlue:     '#50b4ff',
@@ -203,12 +203,18 @@ class GridRenderer {
     const gx = this.gridX + this._shakeX;
     const gy = this.gridY + this._shakeY;
 
-    // ── 힌트 배경 ──
+    // ── 힌트 배경 (그리드 칸과 명확히 분리) ──
     ctx.save();
+    // 행 힌트 배경 (그리드 왼쪽)
+    ctx.fillStyle = C.hintBg;
     roundRect(ctx, gx - this.hintColW, gy, this.hintColW, puzzle.rows * cs, 6);
-    ctx.fillStyle = C.hintBg; ctx.fill();
+    ctx.fill();
+    // 열 힌트 배경 (그리드 위쪽)
     roundRect(ctx, gx, gy - this.hintRowH, puzzle.cols * cs, this.hintRowH, 6);
-    ctx.fillStyle = C.hintBg; ctx.fill();
+    ctx.fill();
+    // 코너 채우기 (왼쪽 위 모서리 빈칸)
+    ctx.fillStyle = C.hintBg;
+    ctx.fillRect(gx - this.hintColW, gy - this.hintRowH, this.hintColW, this.hintRowH);
     ctx.restore();
 
     // ── 완성 행/열 배경 ──
@@ -317,9 +323,15 @@ class GridRenderer {
       }
     }
 
-    // ── 힌트 텍스트 ──
+    // ── 힌트 텍스트 (클리핑으로 그리드 영역 침범 방지) ──
     ctx.textBaseline = 'middle';
     ctx.font = font(hintFontSize, true);
+
+    // 행 힌트 (왼쪽 영역에만 그리기)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(gx - this.hintColW, gy, this.hintColW, puzzle.rows * cs);
+    ctx.clip();
     for (let r = 0; r < puzzle.rows; r++) {
       const hints = puzzle.rowHints[r];
       const hy = gy + r*cs + cs/2;
@@ -331,6 +343,13 @@ class GridRenderer {
         ctx.fillText(String(num), hx, hy);
       });
     }
+    ctx.restore();
+
+    // 열 힌트 (위쪽 영역에만 그리기)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(gx, gy - this.hintRowH, puzzle.cols * cs, this.hintRowH);
+    ctx.clip();
     for (let c = 0; c < puzzle.cols; c++) {
       const hints = puzzle.colHints[c];
       const hx = gx + c*cs + cs/2;
@@ -342,6 +361,7 @@ class GridRenderer {
         ctx.fillText(String(num), hx, hy);
       });
     }
+    ctx.restore();
 
     // ── 5칸 구분선 ──
     ctx.strokeStyle = C.grid5Line;
