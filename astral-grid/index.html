@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ALPINE FLIGHT — Flight Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/styles/main.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- Three.js WebGL canvas -->
+    <canvas id="three-canvas"></canvas>
+
+    <!-- Cockpit frame overlay (static bezels, window frame) -->
+    <div id="cockpit-frame">
+      <div id="frame-top"></div>
+      <div id="frame-left"></div>
+      <div id="frame-right"></div>
+      <div id="frame-bottom"></div>
+      <div id="center-post"></div>
+      <!-- Windshield glare/reflection layer -->
+      <div id="windshield-glare"></div>
+      <!-- Rain streaks (shown when weather active) -->
+      <div id="rain-layer"></div>
+    </div>
+
+    <!-- INSTRUMENT PANEL — bottom of screen -->
+    <div id="instrument-panel">
+
+      <!-- LEFT CLUSTER: Speed + VSI -->
+      <div id="left-instruments">
+        <!-- Airspeed Indicator -->
+        <div class="instrument-box" id="asi-box">
+          <div class="inst-label">AIRSPEED</div>
+          <canvas id="asi-canvas" width="160" height="160"></canvas>
+          <div class="inst-digital" id="asi-digital">0</div>
+          <div class="inst-unit">kt</div>
+        </div>
+        <!-- VSI -->
+        <div class="instrument-box" id="vsi-box">
+          <div class="inst-label">VERT SPEED</div>
+          <canvas id="vsi-canvas" width="100" height="160"></canvas>
+          <div class="inst-digital" id="vsi-digital">0</div>
+          <div class="inst-unit">fpm</div>
+        </div>
+      </div>
+
+      <!-- CENTER: PFD (Primary Flight Display) -->
+      <div id="pfd-box">
+        <div class="inst-label">PFD — PRIMARY FLIGHT DISPLAY</div>
+        <canvas id="pfd-canvas" width="320" height="260"></canvas>
+      </div>
+
+      <!-- CENTER-RIGHT: Nav display -->
+      <div id="nav-box">
+        <div class="inst-label">NAVIGATION</div>
+        <canvas id="nav-canvas" width="220" height="260"></canvas>
+      </div>
+
+      <!-- RIGHT CLUSTER: Altimeter + Heading -->
+      <div id="right-instruments">
+        <!-- Altimeter -->
+        <div class="instrument-box" id="alt-box">
+          <div class="inst-label">ALTITUDE</div>
+          <canvas id="alt-canvas" width="160" height="160"></canvas>
+          <div class="inst-digital" id="alt-digital">0</div>
+          <div class="inst-unit">ft</div>
+        </div>
+        <!-- Heading -->
+        <div class="instrument-box" id="hdg-box">
+          <div class="inst-label">HEADING</div>
+          <canvas id="hdg-canvas" width="160" height="100"></canvas>
+          <div class="inst-digital" id="hdg-digital">360</div>
+          <div class="inst-unit">°</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ENGINE / SYSTEMS strip (bottom center below instruments) -->
+    <div id="engine-strip">
+      <div class="eng-gauge">
+        <div class="eng-label">THROTTLE</div>
+        <div class="eng-bar-bg"><div class="eng-bar-fill" id="throttle-bar"></div></div>
+        <div class="eng-val" id="throttle-val">0%</div>
+      </div>
+      <div class="eng-gauge">
+        <div class="eng-label">N1</div>
+        <div class="eng-bar-bg"><div class="eng-bar-fill n1" id="n1-bar"></div></div>
+        <div class="eng-val" id="n1-val">0%</div>
+      </div>
+      <div class="eng-gauge">
+        <div class="eng-label">N2</div>
+        <div class="eng-bar-bg"><div class="eng-bar-fill n2" id="n2-bar"></div></div>
+        <div class="eng-val" id="n2-val">0%</div>
+      </div>
+      <div class="eng-sep"></div>
+      <div class="eng-info">
+        <div class="eng-info-row"><span class="ei-label">FLAPS</span><span class="ei-val" id="flaps-val">UP</span></div>
+        <div class="eng-info-row"><span class="ei-label">GEAR</span><span class="ei-val green" id="gear-val">UP</span></div>
+        <div class="eng-info-row"><span class="ei-label">AUTOPILOT</span><span class="ei-val" id="ap-val">OFF</span></div>
+      </div>
+      <div class="eng-sep"></div>
+      <div id="warning-area">
+        <div class="warning-item hidden" id="warn-stall">⚠ STALL</div>
+        <div class="warning-item hidden" id="warn-gpws">⚠ PULL UP</div>
+        <div class="warning-item hidden" id="warn-overspeed">⚠ OVERSPEED</div>
+      </div>
+    </div>
+
+    <!-- TOP HUD: minimal flight data -->
+    <div id="top-hud">
+      <div class="top-hud-item">
+        <span class="th-label">IAS</span>
+        <span class="th-val" id="th-ias">000</span>
+        <span class="th-unit">kt</span>
+      </div>
+      <div class="top-hud-item">
+        <span class="th-label">ALT</span>
+        <span class="th-val" id="th-alt">00000</span>
+        <span class="th-unit">ft</span>
+      </div>
+      <div class="top-hud-sep"></div>
+      <div id="flight-title">ALPINE FLIGHT</div>
+      <div class="top-hud-sep"></div>
+      <div class="top-hud-item">
+        <span class="th-label">HDG</span>
+        <span class="th-val" id="th-hdg">360</span>
+        <span class="th-unit">°</span>
+      </div>
+      <div class="top-hud-item">
+        <span class="th-label">VS</span>
+        <span class="th-val" id="th-vs">+000</span>
+        <span class="th-unit">fpm</span>
+      </div>
+    </div>
+
+    <!-- CONTROLS LEGEND (fades after 10s) -->
+    <div id="controls-legend">
+      <div class="cl-title">CONTROLS</div>
+      <div class="cl-row"><kbd>W / S</kbd> Pitch up / down</div>
+      <div class="cl-row"><kbd>A / D</kbd> Roll left / right</div>
+      <div class="cl-row"><kbd>Q / E</kbd> Yaw left / right</div>
+      <div class="cl-row"><kbd>↑ / ↓</kbd> Throttle +/-</div>
+      <div class="cl-row"><kbd>F</kbd> Flaps toggle</div>
+      <div class="cl-row"><kbd>G</kbd> Gear toggle</div>
+      <div class="cl-row"><kbd>P</kbd> Pause</div>
+    </div>
+
+    <!-- PAUSE OVERLAY -->
+    <div id="pause-overlay" class="hidden">
+      <div id="pause-box">
+        <div class="pause-title">PAUSED</div>
+        <div class="pause-sub">Press P to resume</div>
+      </div>
+    </div>
+
+    <!-- SPLASH SCREEN -->
+    <div id="splash-screen">
+      <div id="splash-content">
+        <div id="splash-logo">
+          <div class="splash-line1">ALPINE</div>
+          <div class="splash-line2">FLIGHT</div>
+          <div class="splash-sub">PHOTOREALISTIC FLIGHT SIMULATOR</div>
+        </div>
+        <div id="splash-scenario">
+          <div class="scenario-label">SCENARIO</div>
+          <div class="scenario-name">Swiss Alps — Golden Hour Cruise</div>
+          <div class="scenario-aircraft">Airbus A320neo · FL280 · Mach 0.78</div>
+        </div>
+        <div id="splash-loading">
+          <div id="loading-bar-bg"><div id="loading-bar-fill"></div></div>
+          <div id="loading-text">INITIALIZING AVIONICS...</div>
+        </div>
+        <button id="start-btn" class="hidden">START ENGINES</button>
+      </div>
+    </div>
+
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
