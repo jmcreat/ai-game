@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ALPINE FLIGHT — Flight Simulator</title>
+  <title>WORLD FLIGHT — Flight Simulator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/src/styles/main.css" />
@@ -14,32 +14,31 @@
     <!-- Three.js WebGL canvas -->
     <canvas id="three-canvas"></canvas>
 
-    <!-- Cockpit frame overlay (static bezels, window frame) -->
+    <!-- Cockpit frame overlay -->
     <div id="cockpit-frame">
       <div id="frame-top"></div>
       <div id="frame-left"></div>
       <div id="frame-right"></div>
       <div id="frame-bottom"></div>
       <div id="center-post"></div>
-      <!-- Windshield glare/reflection layer -->
       <div id="windshield-glare"></div>
-      <!-- Rain streaks (shown when weather active) -->
       <div id="rain-layer"></div>
     </div>
+
+    <!-- PANEL TAB (always visible, toggles panel) -->
+    <div id="panel-tab">▼ PANEL</div>
 
     <!-- INSTRUMENT PANEL — bottom of screen -->
     <div id="instrument-panel">
 
       <!-- LEFT CLUSTER: Speed + VSI -->
       <div id="left-instruments">
-        <!-- Airspeed Indicator -->
         <div class="instrument-box" id="asi-box">
           <div class="inst-label">AIRSPEED</div>
           <canvas id="asi-canvas" width="160" height="160"></canvas>
           <div class="inst-digital" id="asi-digital">0</div>
           <div class="inst-unit">kt</div>
         </div>
-        <!-- VSI -->
         <div class="instrument-box" id="vsi-box">
           <div class="inst-label">VERT SPEED</div>
           <canvas id="vsi-canvas" width="100" height="160"></canvas>
@@ -48,7 +47,7 @@
         </div>
       </div>
 
-      <!-- CENTER: PFD (Primary Flight Display) -->
+      <!-- CENTER: PFD -->
       <div id="pfd-box">
         <div class="inst-label">PFD — PRIMARY FLIGHT DISPLAY</div>
         <canvas id="pfd-canvas" width="320" height="260"></canvas>
@@ -62,14 +61,12 @@
 
       <!-- RIGHT CLUSTER: Altimeter + Heading -->
       <div id="right-instruments">
-        <!-- Altimeter -->
         <div class="instrument-box" id="alt-box">
           <div class="inst-label">ALTITUDE</div>
           <canvas id="alt-canvas" width="160" height="160"></canvas>
           <div class="inst-digital" id="alt-digital">0</div>
           <div class="inst-unit">ft</div>
         </div>
-        <!-- Heading -->
         <div class="instrument-box" id="hdg-box">
           <div class="inst-label">HEADING</div>
           <canvas id="hdg-canvas" width="160" height="100"></canvas>
@@ -80,7 +77,7 @@
 
     </div>
 
-    <!-- ENGINE / SYSTEMS strip (bottom center below instruments) -->
+    <!-- ENGINE / SYSTEMS strip -->
     <div id="engine-strip">
       <div class="eng-gauge">
         <div class="eng-label">THROTTLE</div>
@@ -111,7 +108,7 @@
       </div>
     </div>
 
-    <!-- TOP HUD: minimal flight data -->
+    <!-- TOP HUD -->
     <div id="top-hud">
       <div class="top-hud-item">
         <span class="th-label">IAS</span>
@@ -124,7 +121,7 @@
         <span class="th-unit">ft</span>
       </div>
       <div class="top-hud-sep"></div>
-      <div id="flight-title">ALPINE FLIGHT</div>
+      <div id="flight-title">WORLD FLIGHT</div>
       <div class="top-hud-sep"></div>
       <div class="top-hud-item">
         <span class="th-label">HDG</span>
@@ -138,7 +135,10 @@
       </div>
     </div>
 
-    <!-- CONTROLS LEGEND (fades after 10s) -->
+    <!-- CAMERA MODE display -->
+    <div id="camera-mode-display">🎯 1ST PERSON</div>
+
+    <!-- CONTROLS LEGEND -->
     <div id="controls-legend">
       <div class="cl-title">CONTROLS</div>
       <div class="cl-row"><kbd>W / S</kbd> Pitch up / down</div>
@@ -147,6 +147,8 @@
       <div class="cl-row"><kbd>↑ / ↓</kbd> Throttle +/-</div>
       <div class="cl-row"><kbd>F</kbd> Flaps toggle</div>
       <div class="cl-row"><kbd>G</kbd> Gear toggle</div>
+      <div class="cl-row"><kbd>V</kbd> Camera mode</div>
+      <div class="cl-row"><kbd>H</kbd> Hide / Show panel</div>
       <div class="cl-row"><kbd>P</kbd> Pause</div>
     </div>
 
@@ -158,25 +160,43 @@
       </div>
     </div>
 
-    <!-- SPLASH SCREEN -->
+    <!-- ══════════════════════════════════════════════════════════════════════
+         SPLASH SCREEN — TWO PHASES:
+         Phase 1: Scenario Picker  (#scenario-picker)
+         Phase 2: Loading screen   (#loading-screen)
+    ════════════════════════════════════════════════════════════════════════ -->
     <div id="splash-screen">
-      <div id="splash-content">
+
+      <!-- PHASE 1: Choose scenario -->
+      <div id="scenario-picker">
         <div id="splash-logo">
-          <div class="splash-line1">ALPINE</div>
+          <div class="splash-line1">WORLD</div>
           <div class="splash-line2">FLIGHT</div>
           <div class="splash-sub">PHOTOREALISTIC FLIGHT SIMULATOR</div>
         </div>
-        <div id="splash-scenario">
-          <div class="scenario-label">SCENARIO</div>
-          <div class="scenario-name">Swiss Alps — Golden Hour Cruise</div>
-          <div class="scenario-aircraft">Airbus A320neo · FL280 · Mach 0.78</div>
+
+        <div id="scenario-header">SELECT YOUR DESTINATION</div>
+
+        <div id="scenario-cards">
+          <!-- Populated dynamically by main.js -->
+        </div>
+
+        <button id="start-btn">FLY ›</button>
+      </div>
+
+      <!-- PHASE 2: Loading -->
+      <div id="loading-screen" style="display:none">
+        <div id="splash-logo">
+          <div class="splash-line1">WORLD</div>
+          <div class="splash-line2">FLIGHT</div>
         </div>
         <div id="splash-loading">
           <div id="loading-bar-bg"><div id="loading-bar-fill"></div></div>
-          <div id="loading-text">INITIALIZING AVIONICS...</div>
+          <div id="loading-text">INITIALIZING...</div>
         </div>
-        <button id="start-btn" class="hidden">START ENGINES</button>
+        <button id="fly-btn" class="hidden">TAKE OFF ›</button>
       </div>
+
     </div>
 
   </div>

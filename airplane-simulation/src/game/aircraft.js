@@ -29,7 +29,7 @@ export class Aircraft {
     // State
     this.speed    = CRUISE_SPEED;  // knots IAS
     this.throttle = 0.72;          // 0–1
-    this.altitude = 8500;          // meters (FL280 ~= 8534m)
+    this.altitude = 5500;          // meters — good view of Alps terrain below
     this.heading  = 0;             // radians
     this.pitch    = 0;             // radians
     this.roll     = 0;             // radians
@@ -120,7 +120,7 @@ export class Aircraft {
 
     // ── Pitch ──────────────────────────────────────────────────────────────
     const pitchRate = MAX_PITCH_RATE * (Math.PI / 180);
-    if (this._keys['KeyW'] || this._keys['ArrowUp'] && false) {
+    if (this._keys['KeyW']) {
       this.pitch = Math.max(-MAX_PITCH_ANGLE * Math.PI/180, this.pitch - pitchRate * dtS);
     }
     if (this._keys['KeyS']) {
