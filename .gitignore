@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.pyo
+*.psd
+assets/cards/*.svg
+.DS_Store
