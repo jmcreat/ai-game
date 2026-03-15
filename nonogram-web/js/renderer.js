@@ -546,15 +546,13 @@ class GridRenderer {
         const cur = actual[i] ?? 0;
         let col;
         if (done) {
-          col = C.hintDone; // 완성: 초록
+          col = C.hintDone;     // 줄 전체 완성: 초록
         } else if (cur === num) {
-          col = '#80ffaa'; // 이 블록만 맞음: 밝은 초록
-        } else if (cur > 0 && cur < num) {
-          col = C.gold;    // 진행 중: 금색
+          col = C.gold;         // 이 블록 수 정확히 맞음: 노란불
         } else if (cur > num) {
-          col = C.errorRed; // 초과: 빨강
+          col = C.errorRed;     // 초과: 빨강
         } else {
-          col = C.hintNormal;
+          col = C.hintNormal;   // 미완성: 기본 흰색
         }
         ctx.fillStyle = col;
         ctx.textAlign = 'center';
@@ -584,9 +582,7 @@ class GridRenderer {
         if (done) {
           col = C.hintDone;
         } else if (cur === num) {
-          col = '#80ffaa';
-        } else if (cur > 0 && cur < num) {
-          col = C.gold;
+          col = C.gold;         // 정확히 맞음: 노란불
         } else if (cur > num) {
           col = C.errorRed;
         } else {
@@ -634,24 +630,25 @@ class GridRenderer {
       const anim   = this._counterAnim[`r${r}`] || 0;
       const ratio  = filled / total;
 
-      let col = done ? C.hintDone : ratio >= 1 ? '#80ffaa' : active ? '#ffffff' : ratio >= 0.5 ? C.gold : C.neonBlue;
-      const scale = 1 + (anim / 0.35) * 0.4; // 새 칸 채울 때 팝업 효과
+      const col    = done ? C.hintDone : ratio >= 1 ? C.gold : C.neonBlue;
+      const scale  = 1 + (anim / 0.35) * 0.4;
+      const scaledFs = Math.round(fs * scale);
 
       ctx.save();
       ctx.globalAlpha = done ? 0.5 : 0.92;
-      ctx.font = font(Math.round(fs * scale), true);
+      ctx.font = font(scaledFs, true);
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
 
       if (active || anim > 0) {
-        // 배경 pill
         const tw = ctx.measureText(`${filled}`).width + 10;
-        roundRect(ctx, ROW_X - tw/2, hy - fs*0.75, tw, fs*1.5, 4);
-        ctx.fillStyle = done ? 'rgba(50,120,60,0.7)' : ratio >= 1 ? 'rgba(40,120,60,0.8)' : 'rgba(20,50,100,0.8)';
+        roundRect(ctx, ROW_X - tw/2, hy - scaledFs*0.75, tw, scaledFs*1.5, 4);
+        ctx.fillStyle = done ? 'rgba(50,120,60,0.7)' : ratio >= 1 ? 'rgba(80,60,0,0.8)' : 'rgba(20,50,100,0.8)';
         ctx.fill();
       }
       ctx.fillStyle = col;
       if (active) { ctx.shadowColor = col; ctx.shadowBlur = 8; }
       ctx.fillText(`${filled}`, ROW_X, hy);
-      ctx.shadowBlur = 0;
       ctx.restore();
     }
 
@@ -669,23 +666,25 @@ class GridRenderer {
       const anim   = this._counterAnim[`c${c}`] || 0;
       const ratio  = filled / total;
 
-      let col = done ? C.hintDone : ratio >= 1 ? '#80ffaa' : active ? '#ffffff' : ratio >= 0.5 ? C.gold : C.neonBlue;
+      const col    = done ? C.hintDone : ratio >= 1 ? C.gold : C.neonBlue;
       const scale = 1 + (anim / 0.35) * 0.4;
+      const scaledFs2 = Math.round(fs * scale);
 
       ctx.save();
       ctx.globalAlpha = done ? 0.5 : 0.92;
-      ctx.font = font(Math.round(fs * scale), true);
+      ctx.font = font(scaledFs2, true);
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
 
       if (active || anim > 0) {
         const tw = ctx.measureText(`${filled}`).width + 10;
-        roundRect(ctx, hx - tw/2, COL_Y - fs*0.75, tw, fs*1.5, 4);
-        ctx.fillStyle = done ? 'rgba(50,120,60,0.7)' : ratio >= 1 ? 'rgba(40,120,60,0.8)' : 'rgba(20,50,100,0.8)';
+        roundRect(ctx, hx - tw/2, COL_Y - scaledFs2*0.75, tw, scaledFs2*1.5, 4);
+        ctx.fillStyle = done ? 'rgba(50,120,60,0.7)' : ratio >= 1 ? 'rgba(80,60,0,0.8)' : 'rgba(20,50,100,0.8)';
         ctx.fill();
       }
       ctx.fillStyle = col;
       if (active) { ctx.shadowColor = col; ctx.shadowBlur = 8; }
       ctx.fillText(`${filled}`, hx, COL_Y);
-      ctx.shadowBlur = 0;
       ctx.restore();
     }
   }
